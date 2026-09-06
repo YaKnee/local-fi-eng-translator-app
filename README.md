@@ -62,22 +62,6 @@ The application keeps loaded ONNX inference sessions alive so that subsequent tr
 
 See [`TranslationService`](lib/services/translation_service.dart) for the implementation.
 
-## Models
-
-### English → Finnish
-
-[Helsinki-NLP/opus-mt-tc-big-en-fi](https://huggingface.co/Helsinki-NLP/opus-mt-tc-big-en-fi)
-
-Translates English text into Finnish.
-
-### Finnish → English
-
-[Helsinki-NLP/opus-mt-tc-big-fi-en](https://huggingface.co/Helsinki-NLP/opus-mt-tc-big-fi-en)
-
-Translates Finnish text into English.
-
-The original Hugging Face models are converted to ONNX before being bundled as Flutter assets.
-
 ## ONNX Model Conversion
 
 The original Transformers models are not loaded directly by Flutter. They are converted to ONNX first:
