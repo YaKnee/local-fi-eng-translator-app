@@ -437,15 +437,15 @@ The service handles:
 
 The main runtime dependencies are:
 
-[flutter_onnxruntime](https://pub.dev/packages/flutter_onnxruntime)
-[dart_sentencepiece_tokenizer](https://pub.dev/packages/dart_sentencepiece_tokenizer)
-[provider](https://pub.dev/packages/provider)
-[shared_preferences](https://pub.dev/packages/shared_preferences)
-[path_provider](https://pub.dev/packages/path_provider)
-[record](https://pub.dev/packages/record)
-[audioplayers](https://pub.dev/packages/audioplayers)
-[flutter_tts](https://pub.dev/packages/flutter_tts)
-[speech_to_text](https://pub.dev/packages/speech_to_text)
+- [flutter_onnxruntime](https://pub.dev/packages/flutter_onnxruntime)
+- [dart_sentencepiece_tokenizer](https://pub.dev/packages/dart_sentencepiece_tokenizer)
+- [provider](https://pub.dev/packages/provider)
+- [shared_preferences](https://pub.dev/packages/shared_preferences)
+- [path_provider](https://pub.dev/packages/path_provider)
+- [record](https://pub.dev/packages/record)
+- [audioplayers](https://pub.dev/packages/audioplayers)
+- [flutter_tts](https://pub.dev/packages/flutter_tts)
+- [speech_to_text](https://pub.dev/packages/speech_to_text)
 
 The complete dependency list and version constraints are defined in [`pubspec.yaml`](pubspec.yaml).
 
