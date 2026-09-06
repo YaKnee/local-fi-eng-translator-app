@@ -1,24 +1,66 @@
 # Offline English ↔ Finnish Translation for Android
 
-A Flutter application that performs English ↔ Finnish translation entirely offline using ONNX versions of the Helsinki-NLP OPUS-MT translation models.
+A Flutter application for fully offline English ↔ Finnish translation using ONNX versions of the Helsinki-NLP OPUS-MT models.
 
-The app uses two separate neural machine translation models:
+Two translation models are bundled with the application:
 
-English → Finnish: Helsinki-NLP/opus-mt-tc-big-en-fi
-Finnish → English: Helsinki-NLP/opus-mt-tc-big-fi-en
+| Direction         | Model                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| English → Finnish | [Helsinki-NLP/opus-mt-tc-big-en-fi](https://huggingface.co/Helsinki-NLP/opus-mt-tc-big-en-fi) |
+| Finnish → English | [Helsinki-NLP/opus-mt-tc-big-fi-en](https://huggingface.co/Helsinki-NLP/opus-mt-tc-big-fi-en) |
 
-The original models are converted to ONNX and bundled with the Flutter application. Translation is performed locally on the Android device, without requiring an internet connection or external translation API.
+Inference runs locally on the Android device through ONNX Runtime. No translation server or translation API is required.
 
 ## Features
 
-English → Finnish translation
-Finnish → English translation
-Fully offline inference
-ONNX Runtime inference inside Flutter
-Models bundled with the Android application
-No translation API or server required
-Works without network connectivity after installation
-Separate model for each translation direction
+* English → Finnish translation
+* Finnish → English translation
+* Fully offline inference
+* ONNX Runtime inference on Android
+* Bundled translation models
+* Local SentencePiece tokenization
+* Separate model for each translation direction
+* No network connection required for translation
+* Persistent local model caching to avoid extracting large ONNX files on every startup
+
+## Architecture
+
+The translation pipeline is:
+
+```text
+Input text
+    │
+    ▼
+SentencePiece tokenizer
+    │
+    ▼
+Marian vocabulary mapping
+    │
+    ▼
+ONNX encoder
+    │
+    ▼
+ONNX decoder
+    │
+    │  autoregressive token generation
+    ▼
+Generated token IDs
+    │
+    ▼
+Marian vocabulary
+    │
+    ▼
+SentencePiece decoder
+    │
+    ▼
+Translated text
+```
+
+Each translation direction has its own encoder, decoder, vocabulary, and SentencePiece models.
+
+The application keeps loaded ONNX inference sessions alive so that subsequent translations do not need to recreate the sessions.
+
+See [`TranslationService`](lib/services/translation_service.dart) for the implementation.
 
 ## Models
 
@@ -26,43 +68,125 @@ Separate model for each translation direction
 
 [Helsinki-NLP/opus-mt-tc-big-en-fi](https://huggingface.co/Helsinki-NLP/opus-mt-tc-big-en-fi)
 
-The model translates text from English into Finnish.
+Translates English text into Finnish.
 
 ### Finnish → English
 
 [Helsinki-NLP/opus-mt-tc-big-fi-en](https://huggingface.co/Helsinki-NLP/opus-mt-tc-big-fi-en)
 
-The model translates text from Finnish into English.
+Translates Finnish text into English.
 
-The original Hugging Face models are converted to ONNX so they can be executed locally from the Flutter Android application.
+The original Hugging Face models are converted to ONNX before being bundled as Flutter assets.
 
-## ONNX Conversion
+## ONNX Model Conversion
 
-The original Hugging Face models are not loaded directly by Flutter. They are first converted to ONNX.
-
-The general conversion pipeline is:
+The original Transformers models are not loaded directly by Flutter. They are converted to ONNX first:
 
 ```text
-Hugging Face model
-       │
-       ▼
-PyTorch / Transformers
-       │
-       ▼
-ONNX export
-       │
-       ▼
-ONNX model files
-       │
-       ▼
-Flutter assets
+Hugging Face / Transformers model
+              │
+              ▼
+         ONNX export
+              │
+              ▼
+       ONNX model files
+              │
+              ▼
+       Flutter application
+              │
+              ▼
+        ONNX Runtime
 ```
 
-The resulting ONNX files are included in the Flutter application's assets.
+Each model directory contains the files required for local inference, including:
+
+```text
+encoder_model.onnx
+decoder_model_merged.onnx
+source.spm
+target.spm
+vocab.json
+config.json
+generation_config.json
+tokenizer_config.json
+special_tokens_map.json
+```
+
+The encoder and decoder are loaded as separate ONNX Runtime sessions.
+
+## Model Loading and Caching
+
+The translation models are large, so model loading is treated separately from individual translation requests.
+
+At startup, the application prioritizes the **Finnish → English** model because it is the primary translation direction. The English → Finnish model can be loaded in the background afterward.
+
+The application also maintains a local cache of the ONNX files. This avoids repeatedly copying hundreds of megabytes of model data from Flutter's bundled assets into temporary files on every application startup.
+
+Conceptually:
+
+```text
+Application startup
+       │
+       ▼
+Check local ONNX cache
+       │
+       ├── Cached ──────────────┐
+       │                       │
+       └── Not cached          │
+               │               │
+               ▼               │
+       Extract from assets     │
+               │               │
+               ▼               │
+          Cache files          │
+               │               │
+               └───────────────┤
+                               ▼
+                    Create ONNX sessions
+                               │
+                               ▼
+                    FI → EN ready first
+                               │
+                               ▼
+                    EN → FI loads in
+                    background
+```
+
+A startup loading screen reports model-loading progress so the user can see which stage is currently being performed.
+
+See [`TranslationService`](lib/services/translation_service.dart) for model initialization, caching, and session management.
+
+## Offline Operation
+
+After installation, translation itself does not require network connectivity.
+
+```text
+┌─────────────────────────────────────┐
+│             Flutter App             │
+│                                     │
+│  Text                               │
+│   │                                 │
+│   ▼                                 │
+│  SentencePiece                      │
+│   │                                 │
+│   ▼                                 │
+│  ONNX Runtime                       │
+│   │                                 │
+│   ▼                                 │
+│  Translation Model                  │
+│   │                                 │
+│   ▼                                 │
+│  Translated Text                    │
+│                                     │
+└─────────────────────────────────────┘
+                  │
+                  X
+            No network required
+```
+
+This makes the application suitable for situations where network access is unavailable, restricted, unreliable, or intentionally avoided.
 
 ## Project Structure
-
-Structure is:
 
 ```text
 .
@@ -71,38 +195,42 @@ Structure is:
 │       ├── opus-mt-tc-big-en-fi/
 │       │   ├── encoder_model.onnx
 │       │   ├── decoder_model_merged.onnx
-│       │   ├── tokenizer_config.json
+│       │   ├── source.spm
+│       │   ├── target.spm
+│       │   ├── vocab.json
 │       │   └── ...
 │       │
 │       └── opus-mt-tc-big-fi-en/
 │           ├── encoder_model.onnx
 │           ├── decoder_model_merged.onnx
-│           ├── tokenizer_config.json
+│           ├── source.spm
+│           ├── target.spm
+│           ├── vocab.json
 │           └── ...
 │
 ├── lib/
 │   ├── main.dart
 │   ├── models/
-│   ├── services/
-│   │   └── translation_service.dart
-│   └── ...
+│   ├── screens/
+│   └── services/
+│       └── translation_service.dart
 │
 ├── android/
 ├── pubspec.yaml
 └── README.md
 ```
 
-## Flutter Setup
+## Setup
 
-Clone the repository and install the Flutter dependencies:
+Install the Flutter dependencies:
 
 ```bash
 flutter pub get
 ```
 
-Make sure the ONNX model files are available under the configured assets directory.
+The ONNX model directories must be present under `assets/models/`.
 
-For example:
+The assets are registered in `pubspec.yaml`:
 
 ```yaml
 flutter:
@@ -111,113 +239,17 @@ flutter:
     - assets/models/opus-mt-tc-big-fi-en/
 ```
 
-## ONNX Runtime
+Then run the application:
 
-The Flutter application uses an ONNX Runtime Flutter/Dart binding to execute the models locally.
-
-The general inference flow is:
-
-```text
-Input text
-    │
-    ▼
-Tokenizer
-    │
-    ▼
-Input IDs / attention mask
-    │
-    ▼
-ONNX Runtime
-    │
-    ▼
-Generated token IDs
-    │
-    ▼
-Tokenizer decoder
-    │
-    ▼
-Translated text
+```bash
+flutter run
 ```
 
-The application selects the appropriate ONNX model based on the requested translation direction.
+Because the model files are large, the first startup can take considerably longer than subsequent startups while the local model cache is created.
 
-## Translation Flow
+## Usage
 
-### English → Finnish
-
-```text
-English text
-     │
-     ▼
-English tokenizer
-     │
-     ▼
-EN → FI ONNX model
-     │
-     ▼
-Generated token IDs
-     │
-     ▼
-Finnish decoding
-     │
-     ▼
-Finnish text
-```
-
-### Finnish → English
-
-```text
-Finnish text
-     │
-     ▼
-Finnish tokenizer
-     │
-     ▼
-FI → EN ONNX model
-     │
-     ▼
-Generated token IDs
-     │
-     ▼
-English decoding
-     │
-     ▼
-English text
-```
-
-## Offline Operation
-
-Translation does not require a network connection once the application and model assets are installed.
-
-```text
-┌─────────────────────────────┐
-│       Flutter App           │
-│                             │
-│  ┌───────────────────────┐  │
-│  │ Tokenizer             │  │
-│  └───────────┬───────────┘  │
-│              │              │
-│              ▼              │
-│  ┌───────────────────────┐  │
-│  │ ONNX Runtime          │  │
-│  └───────────┬───────────┘  │
-│              │              │
-│              ▼              │
-│  ┌───────────────────────┐  │
-│  │ Translation Model     │  │
-│  └───────────────────────┘  │
-│                             │
-└─────────────────────────────┘
-              │
-              X
-        No network required
-```
-
-This makes the application suitable for environments where network access is unavailable, restricted, unreliable, or undesirable.
-
-## Example Usage
-
-Translation service exposes a simple API:
+The translation service exposes a direction-based API:
 
 ```dart
 final result = await translationService.translate(
@@ -226,7 +258,7 @@ final result = await translationService.translate(
 );
 ```
 
-For Finnish → English:
+Finnish → English:
 
 ```dart
 final result = await translationService.translate(
@@ -235,113 +267,125 @@ final result = await translationService.translate(
 );
 ```
 
-The service is responsible for:
+Convenience methods are also available:
 
-1. Selecting the correct model.
-2. Tokenizing the input.
-3. Creating ONNX Runtime tensors.
-4. Running model inference.
-5. Performing token generation.
-6. Decoding the generated tokens.
-7. Returning the translated text.
+```dart
+final finnish =
+    await translationService.translateEnglishToFinnish(
+  'Hello, how are you?',
+);
 
-> See more at [TranslationService.translate](./lib/services/translation_service.dart#L666)
-
-## Model Loading
-
-Models are loaded from Flutter assets rather than downloaded at runtime.
-
+final english =
+    await translationService.translateFinnishToEnglish(
+  'Hei, mitä kuuluu?',
+);
 ```
 
-```text
-Application startup
-       │
-       ▼
-Load FI → EN model
-       │
-       ▼
-Create inference session
-       │
-       ▼
-Keep session alive
-       │
-       ▼
-Translate multiple inputs
-       │
-       ▼
-Load EN → FI model if required
-       │
-       ▼
-Create inference session
-```
+The service handles:
 
-This avoids repeatedly loading large model files and creating inference sessions for every translation request.
-
-> See example at [TranslationService._loadModel](./lib/services/translation_service.dart#L237)
-
-
-## Memory Usage
-
-Because the models are bundled with the application, the installed application size is larger than a typical Flutter application.
-
-The runtime memory footprint is also affected by:
-
-- Model size
-- ONNX Runtime
-- Intermediate tensors
-- Tokenizer data
-- Decoder state
-- Maximum sequence length
-
-If application size or memory usage becomes a concern, the ONNX models can potentially be optimized or quantized, provided that translation quality remains acceptable.
-
-## Limitations
-
-The application is designed for offline translation, so it does not provide the same capabilities as cloud translation services.
-
-Limitations include:
-
-- Translation quality depends on the underlying OPUS-MT models.
-- Long inputs may require truncation or special handling.
-- Inference speed varies significantly between Android devices.
-- Model files increase application size.
-- CPU inference may be relatively slow on lower-end devices.
-- ONNX conversion must preserve the model's encoder/decoder behavior correctly.
-- Tokenization must match the model used during training.
-
-
-## Development Workflow
-
-```text
-1. Download Hugging Face models
-             │
-             ▼
-2. Convert models to ONNX
-             │
-             ▼
-3. Validate ONNX output
-             │
-             ▼
-4. Add ONNX/tokenizer assets to Flutter
-             │
-             ▼
-5. Initialize ONNX Runtime
-             │
-             ▼
-6. Tokenize input
-             │
-             ▼
-7. Run encoder/decoder inference
-             │
-             ▼
-8. Decode generated tokens
-             │
-             ▼
-9. Display translation
-```
+1. Selecting the appropriate translation model.
+2. Tokenizing the input with SentencePiece.
+3. Mapping tokens through the Marian vocabulary.
+4. Running the ONNX encoder.
+5. Running autoregressive decoder inference.
+6. Maintaining decoder key/value caches during generation.
+7. Selecting generated tokens.
+8. Converting generated tokens back to SentencePiece pieces.
+9. Decoding the pieces into text.
 
 ## Dependencies
 
-The project requires Flutter and an ONNX Runtime package capable of running ONNX models on Android.
+The main runtime dependencies are:
 
-The exact dependencies are defined in [`pubspec.yaml`](pubspec.yaml).
+[flutter_onnxruntime](https://pub.dev/packages/flutter_onnxruntime)
+[dart_sentencepiece_tokenizer](https://pub.dev/packages/dart_sentencepiece_tokenizer)
+[provider](https://pub.dev/packages/provider)
+[shared_preferences](https://pub.dev/packages/shared_preferences)
+[path_provider](https://pub.dev/packages/path_provider)
+[record](https://pub.dev/packages/record)
+[audioplayers](https://pub.dev/packages/audioplayers)
+[flutter_tts](https://pub.dev/packages/flutter_tts)
+[speech_to_text](https://pub.dev/packages/speech_to_text)
+
+The complete dependency list and version constraints are defined in [`pubspec.yaml`](pubspec.yaml).
+
+## Memory and Storage
+
+The translation models are large and have a significant memory footprint.
+
+Resource usage is affected by:
+
+* ONNX model size
+* ONNX Runtime
+* Encoder intermediate tensors
+* Decoder key/value caches
+* Tokenizer and vocabulary data
+* Input sequence length
+* Maximum generated token count
+* Number of loaded translation models
+
+The application may have both translation models loaded simultaneously once background loading has completed.
+
+The bundled model files also substantially increase application size.
+
+Potential future optimizations include:
+
+* ONNX graph optimization
+* Model quantization
+* Reduced-precision inference
+* More efficient model loading
+* Loading only one translation direction when memory is constrained
+* Further reducing unnecessary tensor allocations
+
+Any optimization must be validated against translation quality and runtime compatibility on target Android devices.
+
+## Limitations
+
+Translation quality and performance depend on the underlying OPUS-MT models and the device running inference.
+
+Known limitations include:
+
+* Translation quality is not equivalent to every cloud translation service.
+* Inference speed varies significantly between Android devices.
+* Lower-end devices may take longer to generate translations.
+* Large model files increase application size and storage requirements.
+* Long input sequences may require additional handling or truncation.
+* Loading both models simultaneously increases memory usage.
+* ONNX conversion must preserve the original encoder/decoder behavior.
+* SentencePiece tokenization and Marian vocabulary mappings must remain compatible with the corresponding model.
+* CPU inference may be relatively expensive for long translations.
+
+## Development Workflow
+
+When updating or replacing a translation model, the general workflow is:
+
+```text
+Hugging Face model
+       │
+       ▼
+Convert to ONNX
+       │
+       ▼
+Validate ONNX inputs/outputs
+       │
+       ▼
+Validate vocabulary/tokenizer compatibility
+       │
+       ▼
+Add model assets to Flutter
+       │
+       ▼
+Test Android inference
+       │
+       ▼
+Measure memory and performance
+       │
+       ▼
+Validate translation quality
+```
+
+The ONNX model's output vocabulary dimension must match the vocabulary configuration used by the corresponding translation direction.
+
+For example, the two bundled decoder models have different vocabulary sizes, so the model configuration must not be shared blindly between directions.
+
+
