@@ -22,6 +22,9 @@ Inference runs locally on the Android device through ONNX Runtime. No translatio
 * Separate model for each translation direction
 * No network connection required for translation
 * Persistent local model caching to avoid extracting large ONNX files on every startup
+* Text-to-speech playback for original and translated text
+* Locale-specific voices for each language
+* Categorisation of items for quick lookup.
 
 ## Architecture
 
