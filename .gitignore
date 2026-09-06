@@ -1,3 +1,6 @@
+# Dont include *.onnx files (recreate when necessary)
+*.onnx
+
 # Miscellaneous
 *.class
 *.lock

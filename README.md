@@ -98,7 +98,13 @@ Hugging Face / Transformers model
         ONNX Runtime
 ```
 
-Each model directory contains the files required for local inference, including:
+The encoder and decoder are loaded as separate ONNX Runtime sessions.
+
+## Generating the Model Assets
+
+The ONNX encoder and decoder files are intentionally not stored in Git because each is hundreds of megabytes. The model assets can be reproduced from the original Hugging Face models.
+
+Each model directory should contain:
 
 ```text
 encoder_model.onnx
@@ -112,7 +118,141 @@ tokenizer_config.json
 special_tokens_map.json
 ```
 
-The encoder and decoder are loaded as separate ONNX Runtime sessions.
+### 1. Install the conversion tools
+
+Create a Python environment for the conversion process:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Install the required packages:
+
+```bash
+pip install torch transformers sentencepiece optimum onnx onnxruntime
+```
+
+### 2. Download and export each model
+
+The two models used by the application are:
+
+`Helsinki-NLP/opus-mt-tc-big-en-fi`
+`Helsinki-NLP/opus-mt-tc-big-fi-en`
+
+Create the model directories:
+
+```bash
+mkdir -p assets/models/opus-mt-tc-big-en-fi
+mkdir -p assets/models/opus-mt-tc-big-fi-en
+```
+
+Export English → Finnish:
+
+```bash
+optimum-cli export onnx \
+  --model Helsinki-NLP/opus-mt-tc-big-en-fi \
+  --task text2text-generation-with-past \
+  assets/models/opus-mt-tc-big-en-fi
+```
+
+Export Finnish → English:
+
+```bash
+optimum-cli export onnx \
+  --model Helsinki-NLP/opus-mt-tc-big-fi-en \
+  --task text2text-generation-with-past \
+  assets/models/opus-mt-tc-big-fi-en
+```
+
+The export should produce the encoder and decoder ONNX files, including:
+
+```text
+encoder_model.onnx
+decoder_model_merged.onnx
+```
+
+The exact generated filenames can depend on the installed Optimum version. The Flutter application expects `encoder_model.onnx` and `decoder_model_merged.onnx`.
+
+### 3. Obtain the tokenizer and configuration files
+
+The remaining files are model/tokenizer assets from the original Hugging Face repository. They do not need to be generated manually.
+
+For each model, download or copy:
+
+```text
+source.spm
+target.spm
+vocab.json
+config.json
+generation_config.json
+tokenizer_config.json
+special_tokens_map.json
+```
+
+The resulting directory should look like:
+
+```text
+assets/models/opus-mt-tc-big-en-fi/
+├── encoder_model.onnx
+├── decoder_model_merged.onnx
+├── source.spm
+├── target.spm
+├── vocab.json
+├── config.json
+├── generation_config.json
+├── tokenizer_config.json
+└── special_tokens_map.json
+```
+
+and:
+
+```text
+assets/models/opus-mt-tc-big-fi-en/
+├── encoder_model.onnx
+├── decoder_model_merged.onnx
+├── source.spm
+├── target.spm
+├── vocab.json
+├── config.json
+├── generation_config.json
+├── tokenizer_config.json
+└── special_tokens_map.json
+```
+
+### 4. Verify the ONNX models
+
+Install `onnx` and `onnxruntime` as described above, then verify that the files are valid:
+
+```bash
+python -c "import onnx; onnx.checker.check_model(onnx.load('assets/models/opus-mt-tc-big-en-fi/encoder_model.onnx')); print('EN-FI encoder OK')"
+```
+
+```bash
+python -c "import onnx; onnx.checker.check_model(onnx.load('assets/models/opus-mt-tc-big-en-fi/decoder_model_merged.onnx')); print('EN-FI decoder OK')"
+```
+
+Repeat the checks for `opus-mt-tc-big-fi-en`.
+
+The decoder output vocabulary dimension should also match the vocabulary expected by the application. For example:
+
+```bash
+python -c "import onnxruntime as ort; s=ort.InferenceSession('assets/models/opus-mt-tc-big-fi-en/decoder_model_merged.onnx'); print([(x.name, x.shape) for x in s.get_outputs() if x.name == 'logits'])"
+```
+
+For the current Finnish → English model, the expected logits shape ends in:
+
+```text
+57830
+```
+
+For English → Finnish:
+
+```text
+57849
+```
+
+These values are model-specific and must not be assumed to be identical between the two directions.
 
 ## Model Loading and Caching
 
@@ -354,38 +494,3 @@ Known limitations include:
 * ONNX conversion must preserve the original encoder/decoder behavior.
 * SentencePiece tokenization and Marian vocabulary mappings must remain compatible with the corresponding model.
 * CPU inference may be relatively expensive for long translations.
-
-## Development Workflow
-
-When updating or replacing a translation model, the general workflow is:
-
-```text
-Hugging Face model
-       │
-       ▼
-Convert to ONNX
-       │
-       ▼
-Validate ONNX inputs/outputs
-       │
-       ▼
-Validate vocabulary/tokenizer compatibility
-       │
-       ▼
-Add model assets to Flutter
-       │
-       ▼
-Test Android inference
-       │
-       ▼
-Measure memory and performance
-       │
-       ▼
-Validate translation quality
-```
-
-The ONNX model's output vocabulary dimension must match the vocabulary configuration used by the corresponding translation direction.
-
-For example, the two bundled decoder models have different vocabulary sizes, so the model configuration must not be shared blindly between directions.
-
-
