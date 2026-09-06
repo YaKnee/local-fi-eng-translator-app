@@ -1,0 +1,16 @@
+{
+  "bad_words_ids": [
+    [
+      57848
+    ]
+  ],
+  "bos_token_id": 0,
+  "decoder_start_token_id": 57848,
+  "eos_token_id": 42657,
+  "forced_eos_token_id": 42657,
+  "max_length": 512,
+  "num_beams": 4,
+  "pad_token_id": 57848,
+  "renormalize_logits": true,
+  "transformers_version": "4.57.6"
+}
