@@ -183,7 +183,7 @@ class _SearchAndFilterBarState extends State<SearchAndFilterBar> {
                           ),
                         )
                         : DropdownButtonFormField<String>(
-                          value: _selectedCategory,
+                          initialValue: _selectedCategory,
                           isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Category',

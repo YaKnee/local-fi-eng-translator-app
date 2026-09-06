@@ -21,46 +21,29 @@ class RecordScreen extends StatefulWidget {
   const RecordScreen({super.key});
 
   @override
-  State<RecordScreen> createState() =>
-      _RecordScreenState();
+  State<RecordScreen> createState() => _RecordScreenState();
 }
 
-class _RecordScreenState
-    extends State<RecordScreen> {
+class _RecordScreenState extends State<RecordScreen> {
   bool _isRecording = false;
   bool _isPointerDown = false;
   bool _stopRequested = false;
 
-  _ProcessingStep _processingStep =
-      _ProcessingStep.none;
+  _ProcessingStep _processingStep = _ProcessingStep.none;
 
   // ---------------------------------------------------------------------------
   // Language direction
-  //
-  // These are now the source of truth.
-  //
-  // The UI displays:
-  //
-  //     source → target
-  //
-  // and the swap button changes:
-  //
-  //     en → fi
-  //     fi → en
   // ---------------------------------------------------------------------------
 
   String _sourceLang = 'fi';
   String _targetLang = 'en';
 
   TranslationDirection get _direction {
-    if (_sourceLang == 'en' &&
-        _targetLang == 'fi') {
-      return TranslationDirection
-          .englishToFinnish;
+    if (_sourceLang == 'en' && _targetLang == 'fi') {
+      return TranslationDirection.englishToFinnish;
     }
 
-    return TranslationDirection
-        .finnishToEnglish;
+    return TranslationDirection.finnishToEnglish;
   }
 
   String get _sourceLanguage {
@@ -97,8 +80,7 @@ class _RecordScreenState
   }
 
   bool get _isProcessing {
-    return _processingStep !=
-        _ProcessingStep.none;
+    return _processingStep != _ProcessingStep.none;
   }
 
   // ---------------------------------------------------------------------------
@@ -165,12 +147,10 @@ class _RecordScreenState
 
   // TODO: Fix not recognising spoken Finnish
   Future<void> _startRecording() async {
-    final speechService =
-        context.read<SpeechService>();
+    final speechService = context.read<SpeechService>();
 
     try {
-      final speechInitialized =
-          await speechService.initialize();
+      final speechInitialized = await speechService.initialize();
 
       if (!mounted) {
         return;
@@ -179,12 +159,9 @@ class _RecordScreenState
       if (!speechInitialized) {
         _stopRequested = false;
 
-        ScaffoldMessenger.of(context)
-            .showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Speech recognition is not available.',
-            ),
+            content: Text('Speech recognition is not available.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -192,8 +169,9 @@ class _RecordScreenState
         return;
       }
 
-      final listeningStarted =
-          await speechService.startListening(localeId: _sourceLocaleId);
+      final listeningStarted = await speechService.startListening(
+        localeId: _sourceLocaleId,
+      );
 
       if (!mounted) {
         return;
@@ -202,12 +180,9 @@ class _RecordScreenState
       if (!listeningStarted) {
         _stopRequested = false;
 
-        ScaffoldMessenger.of(context)
-            .showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Could not start speech recognition.',
-            ),
+            content: Text('Could not start speech recognition.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -215,8 +190,7 @@ class _RecordScreenState
         return;
       }
 
-      if (_stopRequested ||
-          !_isPointerDown) {
+      if (_stopRequested || !_isPointerDown) {
         _stopRequested = false;
 
         await speechService.cancelListening();
@@ -236,12 +210,9 @@ class _RecordScreenState
 
       _stopRequested = false;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Could not start speech recognition: $error',
-          ),
+          content: Text('Could not start speech recognition: $error'),
           backgroundColor: Colors.red,
         ),
       );
@@ -257,30 +228,24 @@ class _RecordScreenState
       return;
     }
 
-    final speechService =
-        context.read<SpeechService>();
+    final speechService = context.read<SpeechService>();
 
     setState(() {
       _isRecording = false;
-      _processingStep =
-          _ProcessingStep.processingSpeech;
+      _processingStep = _ProcessingStep.processingSpeech;
     });
 
     try {
-      final transcription =
-          await speechService.stopListening();
+      final transcription = await speechService.stopListening();
 
       if (!mounted) {
         return;
       }
 
       if (transcription.trim().isEmpty) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'No speech was recognized.',
-            ),
+            content: Text('No speech was recognized.'),
             backgroundColor: Colors.amber,
           ),
         );
@@ -288,9 +253,7 @@ class _RecordScreenState
         return;
       }
 
-      await _reviewAndTranslate(
-        transcription,
-      );
+      await _reviewAndTranslate(transcription);
     } catch (error) {
       if (!mounted) {
         return;
@@ -300,17 +263,14 @@ class _RecordScreenState
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(
-              'Could not process speech: $error',
-            ),
+            content: Text('Could not process speech: $error'),
             backgroundColor: Colors.red,
           ),
         );
     } finally {
       if (mounted) {
         setState(() {
-          _processingStep =
-              _ProcessingStep.none;
+          _processingStep = _ProcessingStep.none;
         });
       }
     }
@@ -332,22 +292,17 @@ class _RecordScreenState
   // Review + translate + preview + save
   // ---------------------------------------------------------------------------
 
-  Future<void> _reviewAndTranslate(
-    String initialText,
-  ) async {
+  Future<void> _reviewAndTranslate(String initialText) async {
     if (!mounted) {
       return;
     }
 
-    final storage =
-        context.read<StorageService>();
+    final storage = context.read<StorageService>();
 
-    final translationService =
-        context.read<TranslationService>();
+    final translationService = context.read<TranslationService>();
 
     setState(() {
-      _processingStep =
-          _ProcessingStep.reviewing;
+      _processingStep = _ProcessingStep.reviewing;
     });
 
     try {
@@ -355,31 +310,23 @@ class _RecordScreenState
       // 1. Review source text + category.
       // -----------------------------------------------------------------------
 
-      final result =
-          await _showTranscriptionDialog(
-        initialText,
-      );
+      final result = await _showTranscriptionDialog(initialText);
 
       if (!mounted) {
         return;
       }
 
-      if (result == null ||
-          result.text.trim().isEmpty) {
+      if (result == null || result.text.trim().isEmpty) {
         return;
       }
 
-      final text =
-          result.text.trim();
+      final text = result.text.trim();
 
       // -----------------------------------------------------------------------
       // 2. Category
       // -----------------------------------------------------------------------
 
-      final category =
-          await _ensureCategory(
-        result.category,
-      );
+      final category = await _ensureCategory(result.category);
 
       if (!mounted) {
         return;
@@ -398,12 +345,10 @@ class _RecordScreenState
       // -----------------------------------------------------------------------
 
       setState(() {
-        _processingStep =
-            _ProcessingStep.translating;
+        _processingStep = _ProcessingStep.translating;
       });
 
-      final translatedText =
-          await translationService.translate(
+      final translatedText = await translationService.translate(
         text,
         _direction,
       );
@@ -413,9 +358,7 @@ class _RecordScreenState
       }
 
       if (translatedText.trim().isEmpty) {
-        throw Exception(
-          'Translation returned empty text.',
-        );
+        throw Exception('Translation returned empty text.');
       }
 
       // -----------------------------------------------------------------------
@@ -423,15 +366,12 @@ class _RecordScreenState
       // -----------------------------------------------------------------------
 
       setState(() {
-        _processingStep =
-            _ProcessingStep.previewing;
+        _processingStep = _ProcessingStep.previewing;
       });
 
-      final shouldSave =
-          await _showTranslationPreview(
+      final shouldSave = await _showTranslationPreview(
         originalText: text,
-        translatedText:
-            translatedText.trim(),
+        translatedText: translatedText.trim(),
         category: category,
       );
 
@@ -448,30 +388,22 @@ class _RecordScreenState
       // -----------------------------------------------------------------------
 
       setState(() {
-        _processingStep =
-            _ProcessingStep.saving;
+        _processingStep = _ProcessingStep.saving;
       });
 
-      final now =
-          DateTime.now();
+      final now = DateTime.now();
 
-      final translated =
-          Translated(
+      final translated = Translated(
         id: now.millisecondsSinceEpoch,
         createdAt: now,
         originalText: text,
-        translatedText:
-            translatedText.trim(),
-        sourceLanguage:
-            _sourceLang,
-        targetLanguage:
-            _targetLang,
+        translatedText: translatedText.trim(),
+        sourceLanguage: _sourceLang,
+        targetLanguage: _targetLang,
         category: category,
       );
 
-      await storage.saveTranslated(
-        translated,
-      );
+      await storage.saveTranslated(translated);
 
       if (!mounted) {
         return;
@@ -498,17 +430,14 @@ class _RecordScreenState
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(
-              'Could not process text: $error',
-            ),
+            content: Text('Could not process text: $error'),
             backgroundColor: Colors.red,
           ),
         );
     } finally {
       if (mounted) {
         setState(() {
-          _processingStep =
-              _ProcessingStep.none;
+          _processingStep = _ProcessingStep.none;
         });
       }
     }
@@ -518,34 +447,24 @@ class _RecordScreenState
   // Category persistence
   // ---------------------------------------------------------------------------
 
-  Future<String?> _ensureCategory(
-    String? category,
-  ) async {
-    final trimmedCategory =
-        category?.trim();
+  Future<String?> _ensureCategory(String? category) async {
+    final trimmedCategory = category?.trim();
 
-    if (trimmedCategory == null ||
-        trimmedCategory.isEmpty) {
+    if (trimmedCategory == null || trimmedCategory.isEmpty) {
       return null;
     }
 
-    final storage =
-        context.read<StorageService>();
+    final storage = context.read<StorageService>();
 
-    final categories =
-        storage.getCategories();
+    final categories = storage.getCategories();
 
-    for (final existingCategory
-        in categories) {
-      if (existingCategory.toLowerCase() ==
-          trimmedCategory.toLowerCase()) {
+    for (final existingCategory in categories) {
+      if (existingCategory.toLowerCase() == trimmedCategory.toLowerCase()) {
         return existingCategory;
       }
     }
 
-    await storage.saveCategory(
-      trimmedCategory,
-    );
+    await storage.saveCategory(trimmedCategory);
 
     return trimmedCategory;
   }
@@ -554,22 +473,18 @@ class _RecordScreenState
   // Dialogs
   // ---------------------------------------------------------------------------
 
-  Future<TranscriptionDialogResult?>
-      _showTranscriptionDialog(
+  Future<TranscriptionDialogResult?> _showTranscriptionDialog(
     String transcription,
   ) {
-    final storage =
-        context.read<StorageService>();
+    final storage = context.read<StorageService>();
 
-    return showDialog<
-        TranscriptionDialogResult>(
+    return showDialog<TranscriptionDialogResult>(
       context: context,
       barrierDismissible: false,
       builder: (_) {
         return TranscriptionDialog(
           initialText: transcription,
-          categories:
-              storage.getCategories(),
+          categories: storage.getCategories(),
         );
       },
     );
@@ -580,22 +495,16 @@ class _RecordScreenState
     required String translatedText,
     required String? category,
   }) async {
-    final result =
-        await showDialog<bool>(
+    final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (_) {
         return TranslationPreviewDialog(
-          sourceLanguage:
-              _sourceLanguage,
-          targetLanguage:
-              _targetLanguage,
-          originalText:
-              originalText,
-          translatedText:
-              translatedText,
-          category:
-              category,
+          sourceLanguage: _sourceLanguage,
+          targetLanguage: _targetLanguage,
+          originalText: originalText,
+          translatedText: translatedText,
+          category: category,
         );
       },
     );
@@ -630,28 +539,23 @@ class _RecordScreenState
   }
 
   IconData get _statusIcon {
-    if (_processingStep ==
-        _ProcessingStep.translating) {
+    if (_processingStep == _ProcessingStep.translating) {
       return Icons.translate;
     }
 
-    if (_processingStep ==
-        _ProcessingStep.previewing) {
+    if (_processingStep == _ProcessingStep.previewing) {
       return Icons.preview_outlined;
     }
 
-    if (_processingStep ==
-        _ProcessingStep.saving) {
+    if (_processingStep == _ProcessingStep.saving) {
       return Icons.save_outlined;
     }
 
-    if (_processingStep ==
-        _ProcessingStep.processingSpeech) {
+    if (_processingStep == _ProcessingStep.processingSpeech) {
       return Icons.hourglass_top;
     }
 
-    if (_processingStep ==
-        _ProcessingStep.reviewing) {
+    if (_processingStep == _ProcessingStep.reviewing) {
       return Icons.edit_note;
     }
 
@@ -670,20 +574,14 @@ class _RecordScreenState
 
   @override
   Widget build(BuildContext context) {
-    final theme =
-        Theme.of(context);
+    final theme = Theme.of(context);
 
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 32,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // -----------------------------------------------------------------
               // Language direction
@@ -692,41 +590,23 @@ class _RecordScreenState
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    _sourceLanguage,
-                    style:
-                        theme.textTheme.titleLarge,
-                  ),
+                  Text(_sourceLanguage, style: theme.textTheme.titleLarge),
 
                   const SizedBox(width: 12),
 
-                  Icon(
-                    Icons.arrow_forward,
-                    color:
-                        theme.colorScheme.primary,
-                  ),
+                  Icon(Icons.arrow_forward, color: theme.colorScheme.primary),
 
                   const SizedBox(width: 12),
 
-                  Text(
-                    _targetLanguage,
-                    style:
-                        theme.textTheme.titleLarge,
-                  ),
+                  Text(_targetLanguage, style: theme.textTheme.titleLarge),
 
                   const SizedBox(width: 8),
 
                   IconButton.filled(
-                    tooltip:
-                        'Switch languages',
+                    tooltip: 'Switch languages',
                     onPressed:
-                        _isProcessing ||
-                                _isRecording
-                            ? null
-                            : _swapLanguages,
-                    icon: const Icon(
-                      Icons.swap_horiz,
-                    ),
+                        _isProcessing || _isRecording ? null : _swapLanguages,
+                    icon: const Icon(Icons.swap_horiz),
                   ),
                 ],
               ),
@@ -736,65 +616,37 @@ class _RecordScreenState
               // -----------------------------------------------------------------
               // Record button
               // -----------------------------------------------------------------
-
               Listener(
                 onPointerDown:
-                    _isProcessing
-                        ? null
-                        : (_) =>
-                            _handlePointerDown(),
-                onPointerUp:
-                    _isProcessing
-                        ? null
-                        : (_) =>
-                            _handlePointerUp(),
+                    _isProcessing ? null : (_) => _handlePointerDown(),
+                onPointerUp: _isProcessing ? null : (_) => _handlePointerUp(),
                 onPointerCancel:
-                    _isProcessing
-                        ? null
-                        : (_) =>
-                            _handlePointerCancel(),
+                    _isProcessing ? null : (_) => _handlePointerCancel(),
                 child: Material(
-                  elevation:
-                      _isRecording ? 2 : 6,
-                  shape:
-                      const CircleBorder(),
+                  elevation: _isRecording ? 2 : 6,
+                  shape: const CircleBorder(),
                   color:
                       _isRecording
-                          ? theme
-                              .colorScheme
-                              .error
-                          : theme
-                              .colorScheme
-                              .primary,
-                  shadowColor:
-                      Colors.black54,
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary,
+                  shadowColor: Colors.black54,
                   child: Container(
                     width: 140,
                     height: 140,
-                    decoration:
-                        BoxDecoration(
-                      shape:
-                          BoxShape.circle,
-                      border:
-                          Border.all(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
                         color:
                             _isRecording
-                                ? theme
-                                    .colorScheme
-                                    .primaryContainer
-                                : theme
-                                    .colorScheme
-                                    .inversePrimary,
+                                ? theme.colorScheme.primaryContainer
+                                : theme.colorScheme.inversePrimary,
                         width: 3,
                       ),
                     ),
                     child: Icon(
                       _statusIcon,
                       size: 64,
-                      color:
-                          theme
-                              .colorScheme
-                              .onPrimary,
+                      color: theme.colorScheme.onPrimary,
                     ),
                   ),
                 ),
@@ -805,26 +657,14 @@ class _RecordScreenState
               // -----------------------------------------------------------------
               // Status
               // -----------------------------------------------------------------
-
               if (_isProcessing) ...[
-                const SizedBox(
-                  width: 220,
-                  child:
-                      LinearProgressIndicator(),
-                ),
+                const SizedBox(width: 220, child: LinearProgressIndicator()),
                 const SizedBox(height: 12),
-                Text(
-                  _processingLabel,
-                  style:
-                      theme.textTheme.bodyLarge,
-                ),
+                Text(_processingLabel, style: theme.textTheme.bodyLarge),
               ] else ...[
                 Text(
-                  _isRecording
-                      ? 'Release to stop'
-                      : 'Press and hold to record',
-                  style:
-                      theme.textTheme.bodyMedium,
+                  _isRecording ? 'Release to stop' : 'Press and hold to record',
+                  style: theme.textTheme.bodyMedium,
                 ),
 
                 const SizedBox(height: 20),
@@ -832,16 +672,10 @@ class _RecordScreenState
                 // -----------------------------------------------------------------
                 // Manual entry
                 // -----------------------------------------------------------------
-
                 OutlinedButton.icon(
-                  onPressed:
-                      _enterTextManually,
-                  icon: const Icon(
-                    Icons.keyboard_outlined,
-                  ),
-                  label: const Text(
-                    'Enter text manually',
-                  ),
+                  onPressed: _enterTextManually,
+                  icon: const Icon(Icons.keyboard_outlined),
+                  label: const Text('Enter text manually'),
                 ),
               ],
             ],

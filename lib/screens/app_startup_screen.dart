@@ -21,8 +21,7 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
   void initState() {
     super.initState();
 
-    _translationService =
-        context.read<TranslationService>();
+    _translationService = context.read<TranslationService>();
 
     _initialize();
   }
@@ -38,8 +37,7 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
     });
 
     try {
-      final translationService =
-          context.read<TranslationService>();
+      final translationService = context.read<TranslationService>();
 
       await translationService.initialize();
 
@@ -51,12 +49,8 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
         _loading = false;
       });
     } catch (error, stackTrace) {
-      debugPrint(
-        'Application startup failed: $error',
-      );
-      debugPrintStack(
-        stackTrace: stackTrace,
-      );
+      debugPrint('Application startup failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
 
       if (!mounted) {
         return;
@@ -73,27 +67,21 @@ class _AppStartupScreenState extends State<AppStartupScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       final translationService =
-          _translationService ??
-              context.read<TranslationService>();
+          _translationService ?? context.read<TranslationService>();
 
       return AnimatedBuilder(
         animation: translationService,
         builder: (context, _) {
           return _LoadingScreen(
-            progress:
-                translationService.loadingProgress,
-            status:
-                translationService.loadingStatus,
+            progress: translationService.loadingProgress,
+            status: translationService.loadingStatus,
           );
         },
       );
     }
 
     if (_error != null) {
-      return _StartupErrorScreen(
-        error: _error!,
-        onRetry: _initialize,
-      );
+      return _StartupErrorScreen(error: _error!, onRetry: _initialize);
     }
 
     return const MainScreen();
@@ -104,28 +92,20 @@ class _LoadingScreen extends StatelessWidget {
   final double progress;
   final String status;
 
-  const _LoadingScreen({
-    required this.progress,
-    required this.status,
-  });
+  const _LoadingScreen({required this.progress, required this.status});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final percentage =
-        (progress * 100).round();
+    final percentage = (progress * 100).round();
 
     return Scaffold(
       body: Center(
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 32,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
                 'assets/icon.png',
@@ -136,22 +116,19 @@ class _LoadingScreen extends StatelessWidget {
               const SizedBox(height: 32),
               Text(
                 'Offline Translator',
-                style:
-                    theme.textTheme.headlineSmall,
+                style: theme.textTheme.headlineSmall,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
                 'Preparing Finnish → English',
-                style:
-                    theme.textTheme.titleMedium,
+                style: theme.textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 status,
-                style:
-                    theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -160,16 +137,11 @@ class _LoadingScreen extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: progress,
                   minHeight: 8,
-                  borderRadius:
-                      BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
               const SizedBox(height: 10),
-              Text(
-                '$percentage%',
-                style:
-                    theme.textTheme.bodySmall,
-              ),
+              Text('$percentage%', style: theme.textTheme.bodySmall),
             ],
           ),
         ),
@@ -182,10 +154,7 @@ class _StartupErrorScreen extends StatelessWidget {
   final Object error;
   final VoidCallback onRetry;
 
-  const _StartupErrorScreen({
-    required this.error,
-    required this.onRetry,
-  });
+  const _StartupErrorScreen({required this.error, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -194,39 +163,32 @@ class _StartupErrorScreen extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: Padding(
-          padding:
-              const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(32),
           child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 Icons.error_outline,
                 size: 64,
-                color:
-                    theme.colorScheme.error,
+                color: theme.colorScheme.error,
               ),
               const SizedBox(height: 24),
               Text(
                 'Could not load translation models',
-                style:
-                    theme.textTheme.titleLarge,
+                style: theme.textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
                 '$error',
-                style:
-                    theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: onRetry,
-                icon:
-                    const Icon(Icons.refresh),
-                label:
-                    const Text('Retry'),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
               ),
             ],
           ),

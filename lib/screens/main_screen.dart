@@ -20,11 +20,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
 
-    _screens = const [
-      SearchScreen(),
-      RecordScreen(),
-      SettingsScreen(),
-    ];
+    _screens = const [SearchScreen(), RecordScreen(), SettingsScreen()];
   }
 
   void _onNavigationItemTapped(int index) {
@@ -51,9 +47,7 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: theme.colorScheme.primary,
         title: const Text(
           'Offline Translator',
-          style: TextStyle(
-            color: Colors.white,
-          ),
+          style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
       ),
@@ -62,18 +56,9 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onNavigationItemTapped,
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.mic),
-            label: 'Record',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
+          NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
+          NavigationDestination(icon: Icon(Icons.mic), label: 'Record'),
+          NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
     );

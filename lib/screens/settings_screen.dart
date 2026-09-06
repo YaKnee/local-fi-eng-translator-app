@@ -52,48 +52,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final allVoices = await speechService.getTtsVoices();
 
       // Only expose English and Finnish voices.
-      final voices = allVoices
-          .where(_isSupportedLanguage)
-          .toList();
+      final voices = allVoices.where(_isSupportedLanguage).toList();
 
-      // -----------------------------------------------------------------------
-      // Compatibility with the existing StorageService API.
-      //
-      // Existing "original" voice is treated as the Finnish voice.
-      // Existing "translated" voice is treated as the English voice.
-      //
-      // This means changing translation direction does not change which
-      // physical voice belongs to Finnish or English.
-      // -----------------------------------------------------------------------
+      final savedFinnishVoice = storage.getOriginalTtsVoice();
 
-      final savedFinnishVoice =
-          storage.getOriginalTtsVoice();
-
-      final savedEnglishVoice =
-          storage.getTranslatedTtsVoice();
+      final savedEnglishVoice = storage.getTranslatedTtsVoice();
 
       final finnishVoice =
-          _findMatchingVoice(
-        voices,
-        savedFinnishVoice,
-      ) ??
-          _findPreferredVoice(
-            voices,
-            languageCode: 'fi',
-          );
+          _findMatchingVoice(voices, savedFinnishVoice) ??
+          _findPreferredVoice(voices, languageCode: 'fi');
 
       final englishVoice =
-          _findMatchingVoice(
-        voices,
-        savedEnglishVoice,
-      ) ??
-          _findPreferredVoice(
-            voices,
-            languageCode: 'en',
-          );
+          _findMatchingVoice(voices, savedEnglishVoice) ??
+          _findPreferredVoice(voices, languageCode: 'en');
 
-      final categories =
-          storage.getCategories();
+      final categories = storage.getCategories();
 
       if (!mounted) {
         return;
@@ -103,8 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _voices = voices;
         _finnishVoice = finnishVoice;
         _englishVoice = englishVoice;
-        _categories =
-            List<String>.from(categories);
+        _categories = List<String>.from(categories);
         _loading = false;
       });
 
@@ -112,18 +84,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       //
       // This makes the default deterministic instead of relying on the
       // platform TTS engine to choose something different later.
-      if (savedFinnishVoice == null &&
-          finnishVoice != null) {
-        await storage.saveOriginalTtsVoice(
-          finnishVoice,
-        );
+      if (savedFinnishVoice == null && finnishVoice != null) {
+        await storage.saveOriginalTtsVoice(finnishVoice);
       }
 
-      if (savedEnglishVoice == null &&
-          englishVoice != null) {
-        await storage.saveTranslatedTtsVoice(
-          englishVoice,
-        );
+      if (savedEnglishVoice == null && englishVoice != null) {
+        await storage.saveTranslatedTtsVoice(englishVoice);
       }
     } catch (error) {
       if (!mounted) {
@@ -131,25 +97,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       setState(() {
-        _categories =
-            List<String>.from(
-          storage.getCategories(),
-        );
+        _categories = List<String>.from(storage.getCategories());
         _loading = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Could not load TTS voices: $error',
-          ),
+          content: Text('Could not load TTS voices: $error'),
           backgroundColor: Colors.red,
         ),
       );
 
-      debugPrint(
-        'Could not load TTS voices: $error',
-      );
+      debugPrint('Could not load TTS voices: $error');
     }
   }
 
@@ -158,20 +117,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ---------------------------------------------------------------------------
 
   bool _isSupportedLanguage(TtsVoice voice) {
-    final language =
-        _languageCodeFromLocale(
-      voice.locale,
-    );
+    final language = _languageCodeFromLocale(voice.locale);
 
-    return language == 'fi' ||
-        language == 'en';
+    return language == 'fi' || language == 'en';
   }
 
-  String _languageCodeFromLocale(
-    String locale,
-  ) {
-    final normalized =
-        locale.trim().toLowerCase();
+  String _languageCodeFromLocale(String locale) {
+    final normalized = locale.trim().toLowerCase();
 
     if (normalized.isEmpty) {
       return '';
@@ -181,20 +133,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     //
     // fi-FI
     // fi_FI
-    // en-US
-    // en_US
+    // en-GB
+    // en_GB
     //
-    final separatorIndex =
-        normalized.indexOf('-');
+    final separatorIndex = normalized.indexOf('-');
 
-    final underscoreIndex =
-        normalized.indexOf('_');
+    final underscoreIndex = normalized.indexOf('_');
 
     var index = separatorIndex;
 
-    if (index == -1 ||
-        (underscoreIndex != -1 &&
-            underscoreIndex < index)) {
+    if (index == -1 || (underscoreIndex != -1 && underscoreIndex < index)) {
       index = underscoreIndex;
     }
 
@@ -202,20 +150,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return normalized;
     }
 
-    return normalized.substring(
-      0,
-      index,
-    );
+    return normalized.substring(0, index);
   }
 
   // ---------------------------------------------------------------------------
   // Voice matching / defaults
   // ---------------------------------------------------------------------------
 
-  TtsVoice? _findMatchingVoice(
-    List<TtsVoice> voices,
-    TtsVoice? savedVoice,
-  ) {
+  TtsVoice? _findMatchingVoice(List<TtsVoice> voices, TtsVoice? savedVoice) {
     if (savedVoice == null) {
       return null;
     }
@@ -229,25 +171,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Then name + locale.
     for (final voice in voices) {
-      if (voice.name == savedVoice.name &&
-          voice.locale == savedVoice.locale) {
+      if (voice.name == savedVoice.name && voice.locale == savedVoice.locale) {
         return voice;
       }
     }
 
     // Finally match by language. This is useful when Android's voice
     // identifier changes after a TTS engine update.
-    final savedLanguage =
-        _languageCodeFromLocale(
-      savedVoice.locale,
-    );
+    final savedLanguage = _languageCodeFromLocale(savedVoice.locale);
 
     if (savedLanguage.isNotEmpty) {
       for (final voice in voices) {
-        if (_languageCodeFromLocale(
-              voice.locale,
-            ) ==
-            savedLanguage) {
+        if (_languageCodeFromLocale(voice.locale) == savedLanguage) {
           return voice;
         }
       }
@@ -260,28 +195,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     List<TtsVoice> voices, {
     required String languageCode,
   }) {
-    final languageVoices =
-        voices.where(
-      (voice) =>
-          _languageCodeFromLocale(
-            voice.locale,
-          ) ==
-          languageCode,
+    final languageVoices = voices.where(
+      (voice) => _languageCodeFromLocale(voice.locale) == languageCode,
     );
 
     if (languageVoices.isEmpty) {
       return null;
     }
 
-    final candidates =
-        languageVoices.toList();
+    final candidates = languageVoices.toList();
 
     // Prefer the common Finnish locale.
     if (languageCode == 'fi') {
       final fiFi = candidates.where(
-        (voice) =>
-            voice.locale.toLowerCase() ==
-            'fi-fi',
+        (voice) => voice.locale.toLowerCase() == 'fi-fi',
       );
 
       if (fiFi.isNotEmpty) {
@@ -289,27 +216,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
 
-    // Prefer US English when available.
+    // Prefer GB English when available.
     if (languageCode == 'en') {
-      final enUs = candidates.where(
-        (voice) =>
-            voice.locale.toLowerCase() ==
-            'en-us',
-      );
-
-      if (enUs.isNotEmpty) {
-        return enUs.first;
-      }
-
-      // Otherwise prefer British English.
       final enGb = candidates.where(
-        (voice) =>
-            voice.locale.toLowerCase() ==
-            'en-gb',
+        (voice) => voice.locale.toLowerCase() == 'en-gb',
       );
 
       if (enGb.isNotEmpty) {
         return enGb.first;
+      }
+
+      // Otherwise prefer US English.
+      final enUs = candidates.where(
+        (voice) => voice.locale.toLowerCase() == 'en-us',
+      );
+
+      if (enUs.isNotEmpty) {
+        return enUs.first;
       }
     }
 
@@ -321,8 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _showFinnishVoiceSelector() async {
-    final selected =
-        await _showVoiceSelector(
+    final selected = await _showVoiceSelector(
       selectedVoice: _finnishVoice,
       languageCode: 'fi',
     );
@@ -334,17 +256,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _saveFinnishVoice(selected);
   }
 
-  Future<void> _saveFinnishVoice(
-    TtsVoice voice,
-  ) async {
-    final storage =
-        context.read<StorageService>();
+  Future<void> _saveFinnishVoice(TtsVoice voice) async {
+    final storage = context.read<StorageService>();
 
     try {
       // Compatibility with the current StorageService.
-      await storage.saveOriginalTtsVoice(
-        voice,
-      );
+      await storage.saveOriginalTtsVoice(voice);
 
       if (!mounted) {
         return;
@@ -370,9 +287,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Could not save Finnish voice: $error',
-          ),
+          content: Text('Could not save Finnish voice: $error'),
           backgroundColor: Colors.red,
         ),
       );
@@ -384,8 +299,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _showEnglishVoiceSelector() async {
-    final selected =
-        await _showVoiceSelector(
+    final selected = await _showVoiceSelector(
       selectedVoice: _englishVoice,
       languageCode: 'en',
     );
@@ -397,17 +311,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _saveEnglishVoice(selected);
   }
 
-  Future<void> _saveEnglishVoice(
-    TtsVoice voice,
-  ) async {
-    final storage =
-        context.read<StorageService>();
+  Future<void> _saveEnglishVoice(TtsVoice voice) async {
+    final storage = context.read<StorageService>();
 
     try {
       // Compatibility with the current StorageService.
-      await storage.saveTranslatedTtsVoice(
-        voice,
-      );
+      await storage.saveTranslatedTtsVoice(voice);
 
       if (!mounted) {
         return;
@@ -433,9 +342,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Could not save English voice: $error',
-          ),
+          content: Text('Could not save English voice: $error'),
           backgroundColor: Colors.red,
         ),
       );
@@ -455,13 +362,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     final languageVoices =
-        _voices.where(
-      (voice) =>
-          _languageCodeFromLocale(
-            voice.locale,
-          ) ==
-          languageCode,
-    ).toList();
+        _voices
+            .where(
+              (voice) => _languageCodeFromLocale(voice.locale) == languageCode,
+            )
+            .toList();
 
     if (languageVoices.isEmpty) {
       if (!mounted) {
@@ -481,11 +386,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return null;
     }
 
-    final matchingSelected =
-        _findMatchingVoice(
-      languageVoices,
-      selectedVoice,
-    );
+    final matchingSelected = _findMatchingVoice(languageVoices, selectedVoice);
 
     return showDialog<TtsVoice>(
       context: context,
@@ -503,8 +404,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _addCategory() async {
-    final category =
-        await showDialog<String>(
+    final category = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
         return const _AddCategoryDialog();
@@ -515,24 +415,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final trimmedCategory =
-        category.trim();
+    final trimmedCategory = category.trim();
 
     if (trimmedCategory.isEmpty) {
       return;
     }
 
-    final storage =
-        context.read<StorageService>();
+    final storage = context.read<StorageService>();
 
-    final categories =
-        storage.getCategories();
+    final categories = storage.getCategories();
 
-    final existingCategory =
-        categories.where(
-      (existing) =>
-          existing.toLowerCase() ==
-          trimmedCategory.toLowerCase(),
+    final existingCategory = categories.where(
+      (existing) => existing.toLowerCase() == trimmedCategory.toLowerCase(),
     );
 
     if (existingCategory.isNotEmpty) {
@@ -549,28 +443,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     try {
-      await storage.saveCategory(
-        trimmedCategory,
-      );
+      await storage.saveCategory(trimmedCategory);
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _categories =
-            List<String>.from(
-          storage.getCategories(),
-        );
+        _categories = List<String>.from(storage.getCategories());
         _categoriesExpanded = true;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Category "$trimmedCategory" added.',
-          ),
-        ),
+        SnackBar(content: Text('Category "$trimmedCategory" added.')),
       );
     } catch (error) {
       if (!mounted) {
@@ -579,26 +464,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Could not add category: $error',
-          ),
+          content: Text('Could not add category: $error'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  Future<void> _deleteCategory(
-    String category,
-  ) async {
-    final confirmed =
-        await showDialog<bool>(
+  Future<void> _deleteCategory(String category) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(
-            'Delete category?',
-          ),
+          title: const Text('Delete category?'),
           content: Text(
             'Delete "$category" from your categories?\n\n'
             'Existing recordings will not be deleted.',
@@ -606,33 +484,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(
-                  dialogContext,
-                ).pop(false);
+                Navigator.of(dialogContext).pop(false);
               },
-              child: const Text(
-                'Cancel',
-              ),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor:
-                    Theme.of(context)
-                        .colorScheme
-                        .error,
-                foregroundColor:
-                    Theme.of(context)
-                        .colorScheme
-                        .onError,
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
               ),
               onPressed: () {
-                Navigator.of(
-                  dialogContext,
-                ).pop(true);
+                Navigator.of(dialogContext).pop(true);
               },
-              child: const Text(
-                'Delete',
-              ),
+              child: const Text('Delete'),
             ),
           ],
         );
@@ -643,32 +507,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final storage =
-        context.read<StorageService>();
+    final storage = context.read<StorageService>();
 
     try {
-      await storage.deleteCategory(
-        category,
-      );
+      await storage.deleteCategory(category);
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _categories =
-            List<String>.from(
-          storage.getCategories(),
-        );
+        _categories = List<String>.from(storage.getCategories());
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Category "$category" deleted.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Category "$category" deleted.')));
     } catch (error) {
       if (!mounted) {
         return;
@@ -676,9 +530,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Could not delete category: $error',
-          ),
+          content: Text('Could not delete category: $error'),
           backgroundColor: Colors.red,
         ),
       );
@@ -699,21 +551,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // =====================================================================
 
           ExpansionTile(
-            initiallyExpanded:
-                _textToSpeechExpanded,
-            onExpansionChanged:
-                (expanded) {
+            initiallyExpanded: _textToSpeechExpanded,
+            onExpansionChanged: (expanded) {
               setState(() {
-                _textToSpeechExpanded =
-                    expanded;
+                _textToSpeechExpanded = expanded;
               });
             },
-            leading: const Icon(
-              Icons.record_voice_over,
-            ),
-            title: const Text(
-              'Text-to-speech',
-            ),
+            leading: const Icon(Icons.record_voice_over),
+            title: const Text('Text-to-speech'),
             subtitle: Text(
               _loading
                   ? 'Loading available voices...'
@@ -725,61 +570,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // -----------------------------------------------------------------
 
               ListTile(
-                contentPadding:
-                    const EdgeInsets.only(
-                  left: 72,
-                  right: 16,
-                ),
-                leading: const Icon(
-                  Icons.record_voice_over,
-                ),
-                title: const Text(
-                  'Finnish voice',
-                ),
+                contentPadding: const EdgeInsets.only(left: 72, right: 16),
+                leading: const Icon(Icons.record_voice_over),
+                title: const Text('Finnish voice'),
                 subtitle: Text(
                   _loading
                       ? 'Loading...'
-                      : (_finnishVoice
-                              ?.displayName ??
-                          'Device default'),
+                      : (_finnishVoice?.displayName ?? 'Device default'),
                 ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
-                onTap: _loading
-                    ? null
-                    : _showFinnishVoiceSelector,
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _loading ? null : _showFinnishVoiceSelector,
               ),
 
               // -----------------------------------------------------------------
               // English
               // -----------------------------------------------------------------
-
               ListTile(
-                contentPadding:
-                    const EdgeInsets.only(
-                  left: 72,
-                  right: 16,
-                ),
-                leading: const Icon(
-                  Icons.translate,
-                ),
-                title: const Text(
-                  'English voice',
-                ),
+                contentPadding: const EdgeInsets.only(left: 72, right: 16),
+                leading: const Icon(Icons.translate),
+                title: const Text('English voice'),
                 subtitle: Text(
                   _loading
                       ? 'Loading...'
-                      : (_englishVoice
-                              ?.displayName ??
-                          'Device default'),
+                      : (_englishVoice?.displayName ?? 'Device default'),
                 ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                ),
-                onTap: _loading
-                    ? null
-                    : _showEnglishVoiceSelector,
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _loading ? null : _showEnglishVoiceSelector,
               ),
             ],
           ),
@@ -789,23 +605,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // =====================================================================
           // Categories
           // =====================================================================
-
           ExpansionTile(
-            initiallyExpanded:
-                _categoriesExpanded,
-            onExpansionChanged:
-                (expanded) {
+            initiallyExpanded: _categoriesExpanded,
+            onExpansionChanged: (expanded) {
               setState(() {
-                _categoriesExpanded =
-                    expanded;
+                _categoriesExpanded = expanded;
               });
             },
-            leading: const Icon(
-              Icons.category_outlined,
-            ),
-            title: const Text(
-              'Categories',
-            ),
+            leading: const Icon(Icons.category_outlined),
+            title: const Text('Categories'),
             subtitle: Text(
               _categories.isEmpty
                   ? 'No categories'
@@ -814,79 +622,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             children: [
               Padding(
-                padding:
-                    const EdgeInsets.fromLTRB(
-                  16,
-                  0,
-                  16,
-                  8,
-                ),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed:
-                        _addCategory,
-                    icon: const Icon(
-                      Icons.add,
-                    ),
-                    label: const Text(
-                      'Add category',
-                    ),
+                    onPressed: _addCategory,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add category'),
                   ),
                 ),
               ),
               if (_categories.isEmpty)
                 const Padding(
-                  padding:
-                      EdgeInsets.fromLTRB(
-                    16,
-                    8,
-                    16,
-                    20,
-                  ),
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 20),
                   child: Text(
                     'No categories yet.',
-                    textAlign:
-                        TextAlign.center,
+                    textAlign: TextAlign.center,
                   ),
                 )
               else
-                ..._categories.map(
-                  (category) {
-                    return ListTile(
-                      contentPadding:
-                          const EdgeInsets.only(
-                        left: 32,
-                        right: 8,
-                      ),
-                      leading: const Icon(
-                        Icons.folder_outlined,
-                      ),
-                      title: Text(
-                        category,
-                        overflow:
-                            TextOverflow.ellipsis,
-                      ),
-                      trailing:
-                          IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                        ),
-                        tooltip:
-                            'Delete category',
-                        onPressed: () {
-                          _deleteCategory(
-                            category,
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-              if (_categories.isNotEmpty)
-                const SizedBox(
-                  height: 8,
-                ),
+                ..._categories.map((category) {
+                  return ListTile(
+                    contentPadding: const EdgeInsets.only(left: 32, right: 8),
+                    leading: const Icon(Icons.folder_outlined),
+                    title: Text(category, overflow: TextOverflow.ellipsis),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Delete category',
+                      onPressed: () {
+                        _deleteCategory(category);
+                      },
+                    ),
+                  );
+                }),
+              if (_categories.isNotEmpty) const SizedBox(height: 8),
             ],
           ),
         ],
@@ -899,26 +668,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 // Add category dialog
 // =============================================================================
 
-class _AddCategoryDialog
-    extends StatefulWidget {
+class _AddCategoryDialog extends StatefulWidget {
   const _AddCategoryDialog();
 
   @override
-  State<_AddCategoryDialog> createState() =>
-      _AddCategoryDialogState();
+  State<_AddCategoryDialog> createState() => _AddCategoryDialogState();
 }
 
-class _AddCategoryDialogState
-    extends State<_AddCategoryDialog> {
-  late final TextEditingController
-      _controller;
+class _AddCategoryDialogState extends State<_AddCategoryDialog> {
+  late final TextEditingController _controller;
 
   @override
   void initState() {
     super.initState();
 
-    _controller =
-        TextEditingController();
+    _controller = TextEditingController();
   }
 
   @override
@@ -928,37 +692,28 @@ class _AddCategoryDialogState
   }
 
   void _submit() {
-    final trimmed =
-        _controller.text.trim();
+    final trimmed = _controller.text.trim();
 
     if (trimmed.isEmpty) {
       return;
     }
 
-    Navigator.of(context).pop(
-      trimmed,
-    );
+    Navigator.of(context).pop(trimmed);
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text(
-        'Add category',
-      ),
+      title: const Text('Add category'),
       content: TextField(
         controller: _controller,
         autofocus: true,
-        textCapitalization:
-            TextCapitalization.sentences,
-        textInputAction:
-            TextInputAction.done,
-        decoration:
-            const InputDecoration(
+        textCapitalization: TextCapitalization.sentences,
+        textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(
           labelText: 'Category',
           hintText: 'e.g. Travel',
-          border:
-              OutlineInputBorder(),
+          border: OutlineInputBorder(),
         ),
         onSubmitted: (_) {
           _submit();
@@ -969,16 +724,9 @@ class _AddCategoryDialogState
           onPressed: () {
             Navigator.of(context).pop();
           },
-          child: const Text(
-            'Cancel',
-          ),
+          child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text(
-            'Add',
-          ),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Add')),
       ],
     );
   }

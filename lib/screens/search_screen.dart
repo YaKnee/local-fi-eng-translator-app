@@ -505,9 +505,12 @@ class _SearchScreenState extends State<SearchScreen> {
 
                             TextButton.icon(
                               onPressed: _deleting ? null : _toggleSelectAll,
-                              icon: Icon(allVisibleItemsSelected ? Icons.fullscreen_exit : Icons.fullscreen),
-                              label: Text('All',
+                              icon: Icon(
+                                allVisibleItemsSelected
+                                    ? Icons.fullscreen_exit
+                                    : Icons.fullscreen,
                               ),
+                              label: Text('All'),
                             ),
 
                             TextButton.icon(

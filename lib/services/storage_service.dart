@@ -37,11 +37,7 @@ class StorageService {
 
       return decoded
           .whereType<Map>()
-          .map(
-            (item) => Translated.fromJson(
-              Map<String, dynamic>.from(item),
-            ),
-          )
+          .map((item) => Translated.fromJson(Map<String, dynamic>.from(item)))
           .toList();
     } catch (_) {
       return [];
@@ -59,9 +55,7 @@ class StorageService {
   Future<void> updateTranslated(Translated translated) async {
     final items = await getTranslated();
 
-    final index = items.indexWhere(
-      (item) => item.id == translated.id,
-    );
+    final index = items.indexWhere((item) => item.id == translated.id);
 
     if (index == -1) {
       throw StateError(
@@ -77,9 +71,7 @@ class StorageService {
   Future<void> deleteTranslated(int id) async {
     final items = await getTranslated();
 
-    final index = items.indexWhere(
-      (item) => item.id == id,
-    );
+    final index = items.indexWhere((item) => item.id == id);
 
     if (index == -1) {
       return;
@@ -91,9 +83,7 @@ class StorageService {
   }
 
   Future<void> _saveAll(List<Translated> items) async {
-    final jsonList = items
-        .map((item) => item.toJson())
-        .toList();
+    final jsonList = items.map((item) => item.toJson()).toList();
 
     final saved = await _preferences.setString(
       _translatedKey,
@@ -110,8 +100,7 @@ class StorageService {
   // ---------------------------------------------------------------------------
 
   List<String> getCategories() {
-    final storedCategories =
-        _preferences.getStringList(_categoriesKey);
+    final storedCategories = _preferences.getStringList(_categoriesKey);
 
     if (storedCategories == null) {
       return [];
@@ -133,19 +122,14 @@ class StorageService {
     final categories = getCategories();
 
     final alreadyExists = categories.any(
-      (existing) =>
-          existing.toLowerCase() ==
-          trimmedCategory.toLowerCase(),
+      (existing) => existing.toLowerCase() == trimmedCategory.toLowerCase(),
     );
 
     if (alreadyExists) {
       return;
     }
 
-    final updatedCategories = <String>[
-      ...categories,
-      trimmedCategory,
-    ];
+    final updatedCategories = <String>[...categories, trimmedCategory];
 
     final saved = await _preferences.setStringList(
       _categoriesKey,
@@ -160,15 +144,12 @@ class StorageService {
   Future<void> deleteCategory(String category) async {
     final categories = getCategories();
 
-    final normalized =
-        category.trim().toLowerCase();
+    final normalized = category.trim().toLowerCase();
 
-    final updatedCategories = categories
-        .where(
-          (existing) =>
-              existing.trim().toLowerCase() != normalized,
-        )
-        .toList();
+    final updatedCategories =
+        categories
+            .where((existing) => existing.trim().toLowerCase() != normalized)
+            .toList();
 
     final saved = await _preferences.setStringList(
       _categoriesKey,
@@ -217,28 +198,18 @@ class StorageService {
         return null;
       }
 
-      return TtsVoice.fromJson(
-        Map<String, dynamic>.from(json),
-      );
+      return TtsVoice.fromJson(Map<String, dynamic>.from(json));
     } catch (_) {
       return null;
     }
   }
 
-  Future<void> _saveTtsVoice(
-    String key,
-    TtsVoice voice,
-  ) async {
+  Future<void> _saveTtsVoice(String key, TtsVoice voice) async {
     if (!_isSupportedTtsLocale(voice.locale)) {
-      throw ArgumentError(
-        'Only Finnish and English TTS voices are supported.',
-      );
+      throw ArgumentError('Only Finnish and English TTS voices are supported.');
     }
 
-    final saved = await _preferences.setString(
-      key,
-      jsonEncode(voice.toJson()),
-    );
+    final saved = await _preferences.setString(key, jsonEncode(voice.toJson()));
 
     if (!saved) {
       throw StateError('Could not save TTS voice.');
@@ -256,8 +227,7 @@ class StorageService {
   ///   fi-FI
   ///
   bool _isSupportedTtsLocale(String locale) {
-    final normalized =
-        locale.trim().toLowerCase().replaceAll('_', '-');
+    final normalized = locale.trim().toLowerCase().replaceAll('_', '-');
 
     return normalized == 'fi' ||
         normalized.startsWith('fi-') ||
@@ -267,20 +237,16 @@ class StorageService {
 
   /// Returns true when [locale] represents Finnish.
   bool isFinnishTtsLocale(String locale) {
-    final normalized =
-        locale.trim().toLowerCase().replaceAll('_', '-');
+    final normalized = locale.trim().toLowerCase().replaceAll('_', '-');
 
-    return normalized == 'fi' ||
-        normalized.startsWith('fi-');
+    return normalized == 'fi' || normalized.startsWith('fi-');
   }
 
   /// Returns true when [locale] represents English.
   bool isEnglishTtsLocale(String locale) {
-    final normalized =
-        locale.trim().toLowerCase().replaceAll('_', '-');
+    final normalized = locale.trim().toLowerCase().replaceAll('_', '-');
 
-    return normalized == 'en' ||
-        normalized.startsWith('en-');
+    return normalized == 'en' || normalized.startsWith('en-');
   }
 
   /// Returns the saved original/source voice.
@@ -291,69 +257,49 @@ class StorageService {
   /// If no valid saved voice exists, null is returned. The caller can then
   /// select the appropriate default voice from the available device voices.
   TtsVoice? getOriginalTtsVoice() {
-    final voice =
-        _getTtsVoice(_originalTtsVoiceKey);
+    final voice = _getTtsVoice(_originalTtsVoiceKey);
 
-    if (voice != null &&
-        _isSupportedTtsLocale(voice.locale)) {
+    if (voice != null && _isSupportedTtsLocale(voice.locale)) {
       return voice;
     }
 
     // Existing installations may still have the old single TTS setting.
-    final legacy =
-        _getTtsVoice(_legacyTtsVoiceKey);
+    final legacy = _getTtsVoice(_legacyTtsVoiceKey);
 
-    if (legacy != null &&
-        _isSupportedTtsLocale(legacy.locale)) {
+    if (legacy != null && _isSupportedTtsLocale(legacy.locale)) {
       return legacy;
     }
 
     return null;
   }
 
-  Future<void> saveOriginalTtsVoice(
-    TtsVoice voice,
-  ) async {
-    await _saveTtsVoice(
-      _originalTtsVoiceKey,
-      voice,
-    );
+  Future<void> saveOriginalTtsVoice(TtsVoice voice) async {
+    await _saveTtsVoice(_originalTtsVoiceKey, voice);
   }
 
   Future<void> clearOriginalTtsVoice() async {
-    await _preferences.remove(
-      _originalTtsVoiceKey,
-    );
+    await _preferences.remove(_originalTtsVoiceKey);
   }
 
   /// Returns the saved translated/target voice.
   ///
   /// Only Finnish and English voices are accepted.
   TtsVoice? getTranslatedTtsVoice() {
-    final voice =
-        _getTtsVoice(_translatedTtsVoiceKey);
+    final voice = _getTtsVoice(_translatedTtsVoiceKey);
 
-    if (voice != null &&
-        _isSupportedTtsLocale(voice.locale)) {
+    if (voice != null && _isSupportedTtsLocale(voice.locale)) {
       return voice;
     }
 
     return null;
   }
 
-  Future<void> saveTranslatedTtsVoice(
-    TtsVoice voice,
-  ) async {
-    await _saveTtsVoice(
-      _translatedTtsVoiceKey,
-      voice,
-    );
+  Future<void> saveTranslatedTtsVoice(TtsVoice voice) async {
+    await _saveTtsVoice(_translatedTtsVoiceKey, voice);
   }
 
   Future<void> clearTranslatedTtsVoice() async {
-    await _preferences.remove(
-      _translatedTtsVoiceKey,
-    );
+    await _preferences.remove(_translatedTtsVoiceKey);
   }
 
   // ---------------------------------------------------------------------------
@@ -368,15 +314,13 @@ class StorageService {
   TtsVoice? getFinnishVoice() {
     final original = getOriginalTtsVoice();
 
-    if (original != null &&
-        isFinnishTtsLocale(original.locale)) {
+    if (original != null && isFinnishTtsLocale(original.locale)) {
       return original;
     }
 
     final translated = getTranslatedTtsVoice();
 
-    if (translated != null &&
-        isFinnishTtsLocale(translated.locale)) {
+    if (translated != null && isFinnishTtsLocale(translated.locale)) {
       return translated;
     }
 
@@ -387,15 +331,13 @@ class StorageService {
   TtsVoice? getEnglishVoice() {
     final original = getOriginalTtsVoice();
 
-    if (original != null &&
-        isEnglishTtsLocale(original.locale)) {
+    if (original != null && isEnglishTtsLocale(original.locale)) {
       return original;
     }
 
     final translated = getTranslatedTtsVoice();
 
-    if (translated != null &&
-        isEnglishTtsLocale(translated.locale)) {
+    if (translated != null && isEnglishTtsLocale(translated.locale)) {
       return translated;
     }
 

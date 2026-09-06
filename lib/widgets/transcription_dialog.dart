@@ -4,10 +4,7 @@ class TranscriptionDialogResult {
   final String text;
   final String? category;
 
-  const TranscriptionDialogResult({
-    required this.text,
-    required this.category,
-  });
+  const TranscriptionDialogResult({required this.text, required this.category});
 }
 
 class TranscriptionDialog extends StatefulWidget {
@@ -36,9 +33,7 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
   void initState() {
     super.initState();
 
-    _textController = TextEditingController(
-      text: widget.initialText,
-    );
+    _textController = TextEditingController(text: widget.initialText);
 
     _categoryController = TextEditingController();
 
@@ -123,10 +118,7 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
     }
 
     Navigator.of(context).pop(
-      TranscriptionDialogResult(
-        text: text,
-        category: _getCategoryForResult(),
-      ),
+      TranscriptionDialogResult(text: text, category: _getCategoryForResult()),
     );
   }
 
@@ -149,10 +141,7 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Transcription',
-                style: theme.textTheme.titleSmall,
-              ),
+              Text('Transcription', style: theme.textTheme.titleSmall),
 
               const SizedBox(height: 8),
 
@@ -174,10 +163,7 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
 
               const SizedBox(height: 20),
 
-              Text(
-                'Category',
-                style: theme.textTheme.titleSmall,
-              ),
+              Text('Category', style: theme.textTheme.titleSmall),
 
               const SizedBox(height: 8),
 
@@ -190,8 +176,7 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
                   }
 
                   return _categories.where(
-                    (category) =>
-                        category.toLowerCase().contains(query),
+                    (category) => category.toLowerCase().contains(query),
                   );
                 },
                 displayStringForOption: (category) => category,
@@ -204,10 +189,8 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
                 ) {
                   // Keep the Autocomplete controller and our result controller
                   // pointing at the same current value.
-                  if (autocompleteController.text !=
-                      _categoryController.text) {
-                    autocompleteController.value =
-                        _categoryController.value;
+                  if (autocompleteController.text != _categoryController.text) {
+                    autocompleteController.value = _categoryController.value;
                   }
 
                   return TextField(
@@ -220,16 +203,14 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
                       hintText: 'Select or type a category',
                     ),
                     onChanged: (value) {
-                      _categoryController.value =
-                          autocompleteController.value;
+                      _categoryController.value = autocompleteController.value;
 
                       final trimmed = value.trim();
 
                       String? matchingCategory;
 
                       for (final category in _categories) {
-                        if (category.toLowerCase() ==
-                            trimmed.toLowerCase()) {
+                        if (category.toLowerCase() == trimmed.toLowerCase()) {
                           matchingCategory = category;
                           break;
                         }
@@ -246,11 +227,7 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
                     },
                   );
                 },
-                optionsViewBuilder: (
-                  context,
-                  onSelected,
-                  options,
-                ) {
+                optionsViewBuilder: (context, onSelected, options) {
                   return Align(
                     alignment: Alignment.topLeft,
                     child: Material(
@@ -262,18 +239,14 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
                           maxHeight: 220,
                         ),
                         child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           shrinkWrap: true,
                           itemCount: options.length,
                           itemBuilder: (context, index) {
                             final category = options.elementAt(index);
 
                             return ListTile(
-                              leading: const Icon(
-                                Icons.folder_outlined,
-                              ),
+                              leading: const Icon(Icons.folder_outlined),
                               title: Text(category),
                               onTap: () {
                                 onSelected(category);
@@ -291,8 +264,7 @@ class _TranscriptionDialogState extends State<TranscriptionDialog> {
 
               Builder(
                 builder: (context) {
-                  final categoryText =
-                      _categoryController.text.trim();
+                  final categoryText = _categoryController.text.trim();
 
                   if (categoryText.isEmpty) {
                     return Text(

@@ -7,10 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:path_provider/path_provider.dart';
 
-enum TranslationDirection {
-  englishToFinnish,
-  finnishToEnglish,
-}
+enum TranslationDirection { englishToFinnish, finnishToEnglish }
 
 class TranslationService extends ChangeNotifier {
   // ---------------------------------------------------------------------------
@@ -69,8 +66,7 @@ class TranslationService extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   double _loadingProgress = 0.0;
-  String _loadingStatus =
-      'Preparing translation engine...';
+  String _loadingStatus = 'Preparing translation engine...';
 
   // The UI is only notified when the displayed percentage changes.
   //
@@ -78,30 +74,20 @@ class TranslationService extends ChangeNotifier {
   // 220 ChangeNotifier notifications for a single file.
   int _lastNotifiedProgressPercent = -1;
 
-  double get loadingProgress =>
-      _loadingProgress;
+  double get loadingProgress => _loadingProgress;
 
-  String get loadingStatus =>
-      _loadingStatus;
+  String get loadingStatus => _loadingStatus;
 
-  bool get isInitialized =>
-      _initialized;
+  bool get isInitialized => _initialized;
 
-  bool get isFinnishToEnglishLoaded =>
-      _finnishToEnglishModel != null;
+  bool get isFinnishToEnglishLoaded => _finnishToEnglishModel != null;
 
-  bool get isEnglishToFinnishLoaded =>
-      _englishToFinnishModel != null;
+  bool get isEnglishToFinnishLoaded => _englishToFinnishModel != null;
 
-  void _setLoadingState(
-    double progress,
-    String status,
-  ) {
-    final clampedProgress =
-        progress.clamp(0.0, 1.0).toDouble();
+  void _setLoadingState(double progress, String status) {
+    final clampedProgress = progress.clamp(0.0, 1.0).toDouble();
 
-    final percent =
-        (clampedProgress * 100).round();
+    final percent = (clampedProgress * 100).round();
 
     // Always keep the internal values current.
     _loadingProgress = clampedProgress;
@@ -109,13 +95,11 @@ class TranslationService extends ChangeNotifier {
 
     // But do not rebuild the Flutter UI unless the displayed percentage
     // actually changed.
-    if (percent ==
-        _lastNotifiedProgressPercent) {
+    if (percent == _lastNotifiedProgressPercent) {
       return;
     }
 
-    _lastNotifiedProgressPercent =
-        percent;
+    _lastNotifiedProgressPercent = percent;
 
     notifyListeners();
   }
@@ -133,14 +117,11 @@ class TranslationService extends ChangeNotifier {
       return Future.value();
     }
 
-    return _finnishToEnglishInitialization ??=
-        _initializePrimaryModel();
+    return _finnishToEnglishInitialization ??= _initializePrimaryModel();
   }
 
   Future<void> _initializePrimaryModel() async {
-    print(
-      'Initializing TranslationService...',
-    );
+    print('Initializing TranslationService...');
 
     // Reset progress notification state for a fresh initialization attempt.
     _lastNotifiedProgressPercent = -1;
@@ -148,49 +129,29 @@ class TranslationService extends ChangeNotifier {
     try {
       await _prepareCacheDirectory();
 
-      _setLoadingState(
-        0.02,
-        'Preparing Finnish → English...',
-      );
+      _setLoadingState(0.02, 'Preparing Finnish → English...');
 
-      print(
-        'Loading Finnish -> English model...',
-      );
+      print('Loading Finnish -> English model...');
 
-      _finnishToEnglishModel =
-          await _loadModel(
+      _finnishToEnglishModel = await _loadModel(
         _finnishToEnglish,
         modelPrefix: 'fi-en',
         progressStart: 0.05,
         progressEnd: 0.90,
       );
 
-      print(
-        'Finnish -> English model loaded.',
-      );
+      print('Finnish -> English model loaded.');
 
       _initialized = true;
 
-      _setLoadingState(
-        1.0,
-        'Translation engine ready',
-      );
+      _setLoadingState(1.0, 'Translation engine ready');
 
-      print(
-        'Primary translation model initialized.',
-      );
+      print('Primary translation model initialized.');
 
-      // IMPORTANT:
-      //
-      // Do NOT start loading the second ~880 MB model here.
-      //
-      // The application can now display MainScreen without immediately
-      // starting another huge ONNX model load.
     } catch (error) {
       await _disposeLoadedModels();
 
-      _finnishToEnglishInitialization =
-          null;
+      _finnishToEnglishInitialization = null;
 
       _initialized = false;
 
@@ -207,8 +168,7 @@ class TranslationService extends ChangeNotifier {
       return;
     }
 
-    final applicationDirectory =
-        await getApplicationSupportDirectory();
+    final applicationDirectory = await getApplicationSupportDirectory();
 
     final directory = Directory(
       '${applicationDirectory.path}/'
@@ -217,9 +177,7 @@ class TranslationService extends ChangeNotifier {
     );
 
     if (!await directory.exists()) {
-      await directory.create(
-        recursive: true,
-      );
+      await directory.create(recursive: true);
     }
 
     _modelCacheDirectory = directory;
@@ -241,28 +199,21 @@ class TranslationService extends ChangeNotifier {
     required double progressEnd,
     bool reportProgress = true,
   }) async {
-    final encoderModelAssetPath =
-        '${config.modelDirectory}/encoder_model.onnx';
+    final encoderModelAssetPath = '${config.modelDirectory}/encoder_model.onnx';
 
     final decoderModelAssetPath =
         '${config.modelDirectory}/decoder_model_merged.onnx';
 
-    final sourceSpmPath =
-        '${config.modelDirectory}/source.spm';
+    final sourceSpmPath = '${config.modelDirectory}/source.spm';
 
-    final targetSpmPath =
-        '${config.modelDirectory}/target.spm';
+    final targetSpmPath = '${config.modelDirectory}/target.spm';
 
-    final vocabPath =
-        '${config.modelDirectory}/vocab.json';
+    final vocabPath = '${config.modelDirectory}/vocab.json';
 
-    final modelCacheDirectory =
-        _modelCacheDirectory;
+    final modelCacheDirectory = _modelCacheDirectory;
 
     if (modelCacheDirectory == null) {
-      throw StateError(
-        'ONNX model cache directory has not been created.',
-      );
+      throw StateError('ONNX model cache directory has not been created.');
     }
 
     // -------------------------------------------------------------------------
@@ -281,13 +232,9 @@ class TranslationService extends ChangeNotifier {
       'SentencePiece model...',
     );
 
-    final sourceSpmData =
-        await rootBundle.load(
-      sourceSpmPath,
-    );
+    final sourceSpmData = await rootBundle.load(sourceSpmPath);
 
-    final sourceTokenizer =
-        SentencePieceTokenizer.fromBytes(
+    final sourceTokenizer = SentencePieceTokenizer.fromBytes(
       sourceSpmData.buffer.asUint8List(
         sourceSpmData.offsetInBytes,
         sourceSpmData.lengthInBytes,
@@ -300,9 +247,7 @@ class TranslationService extends ChangeNotifier {
 
     if (reportProgress) {
       _setLoadingState(
-        progressStart +
-            (progressEnd - progressStart) *
-                0.03,
+        progressStart + (progressEnd - progressStart) * 0.03,
         'Loading ${config.targetLanguage} tokenizer...',
       );
     }
@@ -312,13 +257,9 @@ class TranslationService extends ChangeNotifier {
       'SentencePiece model...',
     );
 
-    final targetSpmData =
-        await rootBundle.load(
-      targetSpmPath,
-    );
+    final targetSpmData = await rootBundle.load(targetSpmPath);
 
-    final targetTokenizer =
-        SentencePieceTokenizer.fromBytes(
+    final targetTokenizer = SentencePieceTokenizer.fromBytes(
       targetSpmData.buffer.asUint8List(
         targetSpmData.offsetInBytes,
         targetSpmData.lengthInBytes,
@@ -331,30 +272,21 @@ class TranslationService extends ChangeNotifier {
 
     if (reportProgress) {
       _setLoadingState(
-        progressStart +
-            (progressEnd - progressStart) *
-                0.05,
+        progressStart + (progressEnd - progressStart) * 0.05,
         'Loading vocabulary...',
       );
     }
 
-    print(
-      'Loading Marian vocabulary...',
-    );
+    print('Loading Marian vocabulary...');
 
-    final vocabData =
-        await rootBundle.loadString(
-      vocabPath,
-    );
+    final vocabData = await rootBundle.loadString(vocabPath);
 
-    final decoded =
-        jsonDecode(vocabData) as Map;
+    final decoded = jsonDecode(vocabData) as Map;
 
     final vocab = <String, int>{};
     final reverseVocab = <int, String>{};
 
-    for (final entry
-        in decoded.entries) {
+    for (final entry in decoded.entries) {
       final token = entry.key;
       final id = entry.value as int;
 
@@ -382,9 +314,7 @@ class TranslationService extends ChangeNotifier {
 
     if (reportProgress) {
       _setLoadingState(
-        progressStart +
-            (progressEnd - progressStart) *
-                0.08,
+        progressStart + (progressEnd - progressStart) * 0.08,
         'Preparing encoder model...',
       );
     }
@@ -397,14 +327,8 @@ class TranslationService extends ChangeNotifier {
     await _ensureAssetCached(
       encoderModelAssetPath,
       encoderModelFile,
-      progressStart:
-          progressStart +
-              (progressEnd - progressStart) *
-                  0.08,
-      progressEnd:
-          progressStart +
-              (progressEnd - progressStart) *
-                  0.20,
+      progressStart: progressStart + (progressEnd - progressStart) * 0.08,
+      progressEnd: progressStart + (progressEnd - progressStart) * 0.20,
       reportProgress: reportProgress,
       status: 'Copying encoder model...',
     );
@@ -415,9 +339,7 @@ class TranslationService extends ChangeNotifier {
 
     if (reportProgress) {
       _setLoadingState(
-        progressStart +
-            (progressEnd - progressStart) *
-                0.20,
+        progressStart + (progressEnd - progressStart) * 0.20,
         'Preparing decoder model...',
       );
     }
@@ -430,14 +352,8 @@ class TranslationService extends ChangeNotifier {
     await _ensureAssetCached(
       decoderModelAssetPath,
       decoderModelFile,
-      progressStart:
-          progressStart +
-              (progressEnd - progressStart) *
-                  0.20,
-      progressEnd:
-          progressStart +
-              (progressEnd - progressStart) *
-                  0.82,
+      progressStart: progressStart + (progressEnd - progressStart) * 0.20,
+      progressEnd: progressStart + (progressEnd - progressStart) * 0.82,
       reportProgress: reportProgress,
       status: 'Copying decoder model...',
     );
@@ -448,9 +364,7 @@ class TranslationService extends ChangeNotifier {
 
     if (reportProgress) {
       _setLoadingState(
-        progressStart +
-            (progressEnd - progressStart) *
-                0.84,
+        progressStart + (progressEnd - progressStart) * 0.84,
         'Loading encoder into memory...',
       );
     }
@@ -471,10 +385,7 @@ class TranslationService extends ChangeNotifier {
       '${config.vocabularySize}',
     );
 
-    final encoderSession =
-        await _ort.createSession(
-      encoderModelFile.path,
-    );
+    final encoderSession = await _ort.createSession(encoderModelFile.path);
 
     print(
       'Encoder session created for '
@@ -488,9 +399,7 @@ class TranslationService extends ChangeNotifier {
 
     if (reportProgress) {
       _setLoadingState(
-        progressStart +
-            (progressEnd - progressStart) *
-                0.93,
+        progressStart + (progressEnd - progressStart) * 0.93,
         'Loading decoder into memory...',
       );
     }
@@ -511,10 +420,7 @@ class TranslationService extends ChangeNotifier {
       '${config.vocabularySize}',
     );
 
-    final decoderSession =
-        await _ort.createSession(
-      decoderModelFile.path,
-    );
+    final decoderSession = await _ort.createSession(decoderModelFile.path);
 
     print(
       'Decoder session created for '
@@ -523,10 +429,7 @@ class TranslationService extends ChangeNotifier {
     );
 
     if (reportProgress) {
-      _setLoadingState(
-        progressEnd,
-        'Translation model ready',
-      );
+      _setLoadingState(progressEnd, 'Translation model ready');
     }
 
     return _LoadedModel(
@@ -553,8 +456,7 @@ class TranslationService extends ChangeNotifier {
     // The cache directory includes _modelCacheVersion, so replacing the
     // models can be handled simply by increasing that version.
     if (await destination.exists()) {
-      final length =
-          await destination.length();
+      final length = await destination.length();
 
       if (length > 0) {
         print(
@@ -563,10 +465,7 @@ class TranslationService extends ChangeNotifier {
         );
 
         if (reportProgress) {
-          _setLoadingState(
-            progressEnd,
-            'Using cached model...',
-          );
+          _setLoadingState(progressEnd, 'Using cached model...');
         }
 
         return;
@@ -582,13 +481,9 @@ class TranslationService extends ChangeNotifier {
       '${destination.path}',
     );
 
-    final data =
-        await rootBundle.load(
-      assetPath,
-    );
+    final data = await rootBundle.load(assetPath);
 
-    final bytes =
-        data.buffer.asUint8List(
+    final bytes = data.buffer.asUint8List(
       data.offsetInBytes,
       data.lengthInBytes,
     );
@@ -598,51 +493,33 @@ class TranslationService extends ChangeNotifier {
     // The important difference is that progress notifications are now
     // throttled by _setLoadingState(), so Flutter is not rebuilt for every
     // chunk.
-    const chunkSize =
-        4 * 1024 * 1024;
+    const chunkSize = 4 * 1024 * 1024;
 
-    final sink =
-        destination.openWrite();
+    final sink = destination.openWrite();
 
     try {
       int written = 0;
 
       while (written < bytes.length) {
-        final remaining =
-            bytes.length - written;
+        final remaining = bytes.length - written;
 
-        final length =
-            remaining < chunkSize
-                ? remaining
-                : chunkSize;
+        final length = remaining < chunkSize ? remaining : chunkSize;
 
-        sink.add(
-          bytes.sublist(
-            written,
-            written + length,
-          ),
-        );
+        sink.add(bytes.sublist(written, written + length));
 
         written += length;
 
         if (reportProgress) {
-          final fileProgress =
-              written / bytes.length;
+          final fileProgress = written / bytes.length;
 
           final progress =
-              progressStart +
-                  (progressEnd -
-                          progressStart) *
-                      fileProgress;
+              progressStart + (progressEnd - progressStart) * fileProgress;
 
           // This may be called for every 4 MB chunk,
           // but _setLoadingState() only notifies
           // listeners when the displayed percentage
           // changes.
-          _setLoadingState(
-            progress,
-            status,
-          );
+          _setLoadingState(progress, status);
         }
       }
     } finally {
@@ -656,10 +533,7 @@ class TranslationService extends ChangeNotifier {
     );
 
     if (reportProgress) {
-      _setLoadingState(
-        progressEnd,
-        status,
-      );
+      _setLoadingState(progressEnd, status);
     }
   }
 
@@ -679,33 +553,17 @@ class TranslationService extends ChangeNotifier {
       await initialize();
     }
 
-    final model =
-        await _ensureModelLoaded(
-      direction,
-    );
+    final model = await _ensureModelLoaded(direction);
 
-    return _translateWithModel(
-      inputText,
-      model,
-    );
+    return _translateWithModel(inputText, model);
   }
 
-  Future<String> translateEnglishToFinnish(
-    String inputText,
-  ) {
-    return translate(
-      inputText,
-      TranslationDirection.englishToFinnish,
-    );
+  Future<String> translateEnglishToFinnish(String inputText) {
+    return translate(inputText, TranslationDirection.englishToFinnish);
   }
 
-  Future<String> translateFinnishToEnglish(
-    String inputText,
-  ) {
-    return translate(
-      inputText,
-      TranslationDirection.finnishToEnglish,
-    );
+  Future<String> translateFinnishToEnglish(String inputText) {
+    return translate(inputText, TranslationDirection.finnishToEnglish);
   }
 
   Future<_LoadedModel> _ensureModelLoaded(
@@ -715,10 +573,8 @@ class TranslationService extends ChangeNotifier {
     // Finnish -> English
     // -------------------------------------------------------------------------
 
-    if (direction ==
-        TranslationDirection.finnishToEnglish) {
-      final existing =
-          _finnishToEnglishModel;
+    if (direction == TranslationDirection.finnishToEnglish) {
+      final existing = _finnishToEnglishModel;
 
       if (existing != null) {
         return existing;
@@ -726,13 +582,10 @@ class TranslationService extends ChangeNotifier {
 
       await initialize();
 
-      final loaded =
-          _finnishToEnglishModel;
+      final loaded = _finnishToEnglishModel;
 
       if (loaded == null) {
-        throw StateError(
-          'Finnish -> English model failed to load.',
-        );
+        throw StateError('Finnish -> English model failed to load.');
       }
 
       return loaded;
@@ -745,8 +598,7 @@ class TranslationService extends ChangeNotifier {
     // It is NOT loaded during application startup.
     // -------------------------------------------------------------------------
 
-    final existing =
-        _englishToFinnishModel;
+    final existing = _englishToFinnishModel;
 
     if (existing != null) {
       return existing;
@@ -754,19 +606,15 @@ class TranslationService extends ChangeNotifier {
 
     // If another request is already loading the model,
     // wait for that same Future instead of starting another load.
-    final existingInitialization =
-        _englishToFinnishInitialization;
+    final existingInitialization = _englishToFinnishInitialization;
 
     if (existingInitialization != null) {
       await existingInitialization;
 
-      final loaded =
-          _englishToFinnishModel;
+      final loaded = _englishToFinnishModel;
 
       if (loaded == null) {
-        throw StateError(
-          'English -> Finnish model failed to load.',
-        );
+        throw StateError('English -> Finnish model failed to load.');
       }
 
       return loaded;
@@ -774,11 +622,9 @@ class TranslationService extends ChangeNotifier {
 
     await _prepareCacheDirectory();
 
-    final initialization =
-        _loadEnglishToFinnish();
+    final initialization = _loadEnglishToFinnish();
 
-    _englishToFinnishInitialization =
-        initialization;
+    _englishToFinnishInitialization = initialization;
 
     try {
       await initialization;
@@ -787,35 +633,25 @@ class TranslationService extends ChangeNotifier {
       //
       // Do not clear it before awaiting it, otherwise another caller could
       // start a second 880 MB model load.
-      if (identical(
-        _englishToFinnishInitialization,
-        initialization,
-      )) {
-        _englishToFinnishInitialization =
-            null;
+      if (identical(_englishToFinnishInitialization, initialization)) {
+        _englishToFinnishInitialization = null;
       }
     }
 
-    final loaded =
-        _englishToFinnishModel;
+    final loaded = _englishToFinnishModel;
 
     if (loaded == null) {
-      throw StateError(
-        'English -> Finnish model failed to load.',
-      );
+      throw StateError('English -> Finnish model failed to load.');
     }
 
     return loaded;
   }
 
   Future<void> _loadEnglishToFinnish() async {
-    print(
-      'Starting English -> Finnish model loading...',
-    );
+    print('Starting English -> Finnish model loading...');
 
     try {
-      _englishToFinnishModel =
-          await _loadModel(
+      _englishToFinnishModel = await _loadModel(
         _englishToFinnish,
         modelPrefix: 'en-fi',
         progressStart: 0.0,
@@ -823,9 +659,7 @@ class TranslationService extends ChangeNotifier {
         reportProgress: false,
       );
 
-      print(
-        'English -> Finnish model loaded.',
-      );
+      print('English -> Finnish model loaded.');
     } catch (error, stackTrace) {
       print(
         'English -> Finnish model loading failed: '
@@ -842,119 +676,82 @@ class TranslationService extends ChangeNotifier {
 
   // ---------------------------------------------------------------------------
   // Translation implementation
-  //
-  // The generation algorithm is unchanged.
   // ---------------------------------------------------------------------------
 
   Future<String> _translateWithModel(
     String inputText,
     _LoadedModel model,
   ) async {
-    final sourceTokenizer =
-        model.sourceTokenizer;
+    final sourceTokenizer = model.sourceTokenizer;
 
-    final targetTokenizer =
-        model.targetTokenizer;
+    final targetTokenizer = model.targetTokenizer;
 
-    final vocab =
-        model.vocab;
+    final vocab = model.vocab;
 
-    final reverseVocab =
-        model.reverseVocab;
+    final reverseVocab = model.reverseVocab;
 
-    final encoderSession =
-        model.encoderSession;
+    final encoderSession = model.encoderSession;
 
-    final decoderSession =
-        model.decoderSession;
+    final decoderSession = model.decoderSession;
 
-    final config =
-        model.config;
+    final config = model.config;
 
     // -------------------------------------------------------------------------
     // Encode source text
     // -------------------------------------------------------------------------
 
-    final encoding =
-        sourceTokenizer.encode(
-      inputText,
-      addSpecialTokens: false,
-    );
+    final encoding = sourceTokenizer.encode(inputText, addSpecialTokens: false);
 
     final mappedIds =
         encoding.tokens.map((token) {
-      final id = vocab[token];
+          final id = vocab[token];
 
-      if (id == null) {
-        throw StateError(
-          'Token "$token" was not found in '
-          '${config.modelDirectory}/vocab.json.',
-        );
-      }
+          if (id == null) {
+            throw StateError(
+              'Token "$token" was not found in '
+              '${config.modelDirectory}/vocab.json.',
+            );
+          }
 
-      return id;
-    }).toList();
+          return id;
+        }).toList();
 
-    mappedIds.add(
-      config.eosToken,
-    );
+    mappedIds.add(config.eosToken);
 
-    final sourceIds =
-        Int64List.fromList(
-      mappedIds,
-    );
+    final sourceIds = Int64List.fromList(mappedIds);
 
-    final encoderSequenceLength =
-        sourceIds.length;
+    final encoderSequenceLength = sourceIds.length;
 
-    final attentionMask =
-        Int64List.fromList(
-      List<int>.filled(
-        encoderSequenceLength,
-        1,
-      ),
+    final attentionMask = Int64List.fromList(
+      List<int>.filled(encoderSequenceLength, 1),
     );
 
     // -------------------------------------------------------------------------
     // Encoder
     // -------------------------------------------------------------------------
 
-    final sourceIdsTensor =
-        await OrtValue.fromList(
-      sourceIds,
-      [
-        1,
-        encoderSequenceLength,
-      ],
-    );
+    final sourceIdsTensor = await OrtValue.fromList(sourceIds, [
+      1,
+      encoderSequenceLength,
+    ]);
 
-    final attentionMaskTensor =
-        await OrtValue.fromList(
-      attentionMask,
-      [
-        1,
-        encoderSequenceLength,
-      ],
-    );
+    final attentionMaskTensor = await OrtValue.fromList(attentionMask, [
+      1,
+      encoderSequenceLength,
+    ]);
 
-    final encoderOutputs =
-        await encoderSession.run({
-      'input_ids':
-          sourceIdsTensor,
-      'attention_mask':
-          attentionMaskTensor,
+    final encoderOutputs = await encoderSession.run({
+      'input_ids': sourceIdsTensor,
+      'attention_mask': attentionMaskTensor,
     });
 
-    final encoderHiddenStates =
-        encoderOutputs[
-            'last_hidden_state'];
+    final encoderHiddenStates = encoderOutputs['last_hidden_state'];
 
     if (encoderHiddenStates == null) {
       await sourceIdsTensor.dispose();
       await attentionMaskTensor.dispose();
 
-      for (final tensor
-          in encoderOutputs.values) {
+      for (final tensor in encoderOutputs.values) {
         await tensor.dispose();
       }
 
@@ -968,150 +765,89 @@ class TranslationService extends ChangeNotifier {
     // Decoder generation
     // -------------------------------------------------------------------------
 
-    final generatedTokens =
-        <int>[];
+    final generatedTokens = <int>[];
 
-    var decoderInputIds =
-        Int64List.fromList([
-      config.decoderStartToken,
-    ]);
+    var decoderInputIds = Int64List.fromList([config.decoderStartToken]);
 
-    final encoderKeyCache =
-        <OrtValue>[];
+    final encoderKeyCache = <OrtValue>[];
 
-    final encoderValueCache =
-        <OrtValue>[];
+    final encoderValueCache = <OrtValue>[];
 
-    final decoderKeyCache =
-        <OrtValue>[];
+    final decoderKeyCache = <OrtValue>[];
 
-    final decoderValueCache =
-        <OrtValue>[];
+    final decoderValueCache = <OrtValue>[];
 
     var useCacheBranch = false;
 
     try {
-      for (
-        int step = 0;
-        step < _maxNewTokens;
-        step++
-      ) {
-        final decoderInputTensor =
-            await OrtValue.fromList(
-          decoderInputIds,
-          [
-            1,
-            decoderInputIds.length,
-          ],
-        );
+      for (int step = 0; step < _maxNewTokens; step++) {
+        final decoderInputTensor = await OrtValue.fromList(decoderInputIds, [
+          1,
+          decoderInputIds.length,
+        ]);
 
-        final useCacheTensor =
-            await OrtValue.fromList(
-          [useCacheBranch],
-          [1],
-        );
+        final useCacheTensor = await OrtValue.fromList([useCacheBranch], [1]);
 
-        final encoderAttentionMaskTensor =
-            await OrtValue.fromList(
+        final encoderAttentionMaskTensor = await OrtValue.fromList(
           attentionMask,
-          [
-            1,
-            encoderSequenceLength,
-          ],
+          [1, encoderSequenceLength],
         );
 
-        final decoderInputs =
-            <String, OrtValue>{
-          'encoder_attention_mask':
-              encoderAttentionMaskTensor,
-          'input_ids':
-              decoderInputTensor,
-          'encoder_hidden_states':
-              encoderHiddenStates,
-          'use_cache_branch':
-              useCacheTensor,
+        final decoderInputs = <String, OrtValue>{
+          'encoder_attention_mask': encoderAttentionMaskTensor,
+          'input_ids': decoderInputTensor,
+          'encoder_hidden_states': encoderHiddenStates,
+          'use_cache_branch': useCacheTensor,
         };
 
         // ---------------------------------------------------------------------
         // Cache inputs
         // ---------------------------------------------------------------------
 
-        for (
-          int layer = 0;
-          layer < _numberOfLayers;
-          layer++
-        ) {
+        for (int layer = 0; layer < _numberOfLayers; layer++) {
           if (!useCacheBranch) {
-            decoderInputs[
-                'past_key_values.$layer.decoder.key'] =
-                await OrtValue.fromList(
-              Float32List(0),
-              [
-                1,
-                _numberOfHeads,
-                0,
-                _headDimension,
-              ],
-            );
+            decoderInputs['past_key_values.$layer.decoder.key'] =
+                await OrtValue.fromList(Float32List(0), [
+                  1,
+                  _numberOfHeads,
+                  0,
+                  _headDimension,
+                ]);
 
-            decoderInputs[
-                'past_key_values.$layer.decoder.value'] =
-                await OrtValue.fromList(
-              Float32List(0),
-              [
-                1,
-                _numberOfHeads,
-                0,
-                _headDimension,
-              ],
-            );
+            decoderInputs['past_key_values.$layer.decoder.value'] =
+                await OrtValue.fromList(Float32List(0), [
+                  1,
+                  _numberOfHeads,
+                  0,
+                  _headDimension,
+                ]);
 
-            decoderInputs[
-                'past_key_values.$layer.encoder.key'] =
+            decoderInputs['past_key_values.$layer.encoder.key'] =
                 await OrtValue.fromList(
-              Float32List(
-                _numberOfHeads *
-                    encoderSequenceLength *
-                    _headDimension,
-              ),
-              [
-                1,
-                _numberOfHeads,
-                encoderSequenceLength,
-                _headDimension,
-              ],
-            );
+                  Float32List(
+                    _numberOfHeads * encoderSequenceLength * _headDimension,
+                  ),
+                  [1, _numberOfHeads, encoderSequenceLength, _headDimension],
+                );
 
-            decoderInputs[
-                'past_key_values.$layer.encoder.value'] =
+            decoderInputs['past_key_values.$layer.encoder.value'] =
                 await OrtValue.fromList(
-              Float32List(
-                _numberOfHeads *
-                    encoderSequenceLength *
-                    _headDimension,
-              ),
-              [
-                1,
-                _numberOfHeads,
-                encoderSequenceLength,
-                _headDimension,
-              ],
-            );
+                  Float32List(
+                    _numberOfHeads * encoderSequenceLength * _headDimension,
+                  ),
+                  [1, _numberOfHeads, encoderSequenceLength, _headDimension],
+                );
           } else {
-            decoderInputs[
-                'past_key_values.$layer.decoder.key'] =
+            decoderInputs['past_key_values.$layer.decoder.key'] =
                 decoderKeyCache[layer];
 
-            decoderInputs[
-                'past_key_values.$layer.decoder.value'] =
+            decoderInputs['past_key_values.$layer.decoder.value'] =
                 decoderValueCache[layer];
 
-            decoderInputs[
-                'past_key_values.$layer.encoder.key'] =
+            decoderInputs['past_key_values.$layer.encoder.key'] =
                 encoderKeyCache[layer];
 
-            decoderInputs[
-                'past_key_values.$layer.encoder.value'] =
+            decoderInputs['past_key_values.$layer.encoder.value'] =
                 encoderValueCache[layer];
           }
         }
@@ -1120,19 +856,14 @@ class TranslationService extends ChangeNotifier {
         // Run decoder
         // ---------------------------------------------------------------------
 
-        final outputs =
-            await decoderSession.run(
-          decoderInputs,
-        );
+        final outputs = await decoderSession.run(decoderInputs);
 
-        final logits =
-            outputs['logits'];
+        final logits = outputs['logits'];
 
         if (logits == null) {
           await decoderInputTensor.dispose();
           await useCacheTensor.dispose();
-          await encoderAttentionMaskTensor
-              .dispose();
+          await encoderAttentionMaskTensor.dispose();
 
           await _disposeOutputs(
             outputs,
@@ -1144,20 +875,15 @@ class TranslationService extends ChangeNotifier {
             },
           );
 
-          throw StateError(
-            'Decoder did not return logits.',
-          );
+          throw StateError('Decoder did not return logits.');
         }
 
-        final logitsValues =
-            await logits.asFlattenedList();
+        final logitsValues = await logits.asFlattenedList();
 
-        if (logitsValues.length !=
-            config.vocabularySize) {
+        if (logitsValues.length != config.vocabularySize) {
           await decoderInputTensor.dispose();
           await useCacheTensor.dispose();
-          await encoderAttentionMaskTensor
-              .dispose();
+          await encoderAttentionMaskTensor.dispose();
 
           await _disposeOutputs(
             outputs,
@@ -1182,18 +908,10 @@ class TranslationService extends ChangeNotifier {
 
         var bestToken = 0;
 
-        var bestLogit =
-            (logitsValues[0] as num)
-                .toDouble();
+        var bestLogit = (logitsValues[0] as num).toDouble();
 
-        for (
-          int i = 1;
-          i < logitsValues.length;
-          i++
-        ) {
-          final value =
-              (logitsValues[i] as num)
-                  .toDouble();
+        for (int i = 1; i < logitsValues.length; i++) {
+          final value = (logitsValues[i] as num).toDouble();
 
           if (value > bestLogit) {
             bestLogit = value;
@@ -1205,8 +923,7 @@ class TranslationService extends ChangeNotifier {
         // EOS
         // ---------------------------------------------------------------------
 
-        if (bestToken ==
-            config.eosToken) {
+        if (bestToken == config.eosToken) {
           await _disposeOutputs(
             outputs,
             except: {
@@ -1219,52 +936,33 @@ class TranslationService extends ChangeNotifier {
 
           await decoderInputTensor.dispose();
           await useCacheTensor.dispose();
-          await encoderAttentionMaskTensor
-              .dispose();
+          await encoderAttentionMaskTensor.dispose();
 
           break;
         }
 
-        generatedTokens.add(
-          bestToken,
-        );
+        generatedTokens.add(bestToken);
 
         // ---------------------------------------------------------------------
         // Save cache
         // ---------------------------------------------------------------------
 
-        final newDecoderKeys =
-            <OrtValue>[];
+        final newDecoderKeys = <OrtValue>[];
 
-        final newDecoderValues =
-            <OrtValue>[];
+        final newDecoderValues = <OrtValue>[];
 
-        final newEncoderKeys =
-            <OrtValue>[];
+        final newEncoderKeys = <OrtValue>[];
 
-        final newEncoderValues =
-            <OrtValue>[];
+        final newEncoderValues = <OrtValue>[];
 
-        for (
-          int layer = 0;
-          layer < _numberOfLayers;
-          layer++
-        ) {
-          final decoderKey =
-              outputs[
-                  'present.$layer.decoder.key'];
+        for (int layer = 0; layer < _numberOfLayers; layer++) {
+          final decoderKey = outputs['present.$layer.decoder.key'];
 
-          final decoderValue =
-              outputs[
-                  'present.$layer.decoder.value'];
+          final decoderValue = outputs['present.$layer.decoder.value'];
 
-          final encoderKey =
-              outputs[
-                  'present.$layer.encoder.key'];
+          final encoderKey = outputs['present.$layer.encoder.key'];
 
-          final encoderValue =
-              outputs[
-                  'present.$layer.encoder.value'];
+          final encoderValue = outputs['present.$layer.encoder.value'];
 
           if (decoderKey == null ||
               decoderValue == null ||
@@ -1272,8 +970,7 @@ class TranslationService extends ChangeNotifier {
               encoderValue == null) {
             await decoderInputTensor.dispose();
             await useCacheTensor.dispose();
-            await encoderAttentionMaskTensor
-                .dispose();
+            await encoderAttentionMaskTensor.dispose();
 
             await _disposeOutputs(
               outputs,
@@ -1291,22 +988,14 @@ class TranslationService extends ChangeNotifier {
             );
           }
 
-          newDecoderKeys.add(
-            decoderKey,
-          );
+          newDecoderKeys.add(decoderKey);
 
-          newDecoderValues.add(
-            decoderValue,
-          );
+          newDecoderValues.add(decoderValue);
 
           if (!useCacheBranch) {
-            newEncoderKeys.add(
-              encoderKey,
-            );
+            newEncoderKeys.add(encoderKey);
 
-            newEncoderValues.add(
-              encoderValue,
-            );
+            newEncoderValues.add(encoderValue);
           }
         }
 
@@ -1314,72 +1003,54 @@ class TranslationService extends ChangeNotifier {
         // Replace decoder cache
         // ---------------------------------------------------------------------
 
-        for (final tensor
-            in decoderKeyCache) {
+        for (final tensor in decoderKeyCache) {
           await tensor.dispose();
         }
 
-        for (final tensor
-            in decoderValueCache) {
+        for (final tensor in decoderValueCache) {
           await tensor.dispose();
         }
 
         decoderKeyCache
           ..clear()
-          ..addAll(
-            newDecoderKeys,
-          );
+          ..addAll(newDecoderKeys);
 
         decoderValueCache
           ..clear()
-          ..addAll(
-            newDecoderValues,
-          );
+          ..addAll(newDecoderValues);
 
         // Encoder cache only needs to be retained
         // after the first decoder call.
         if (!useCacheBranch) {
-          encoderKeyCache.addAll(
-            newEncoderKeys,
-          );
+          encoderKeyCache.addAll(newEncoderKeys);
 
-          encoderValueCache.addAll(
-            newEncoderValues,
-          );
+          encoderValueCache.addAll(newEncoderValues);
         }
 
         // ---------------------------------------------------------------------
         // Dispose outputs that aren't cached
         // ---------------------------------------------------------------------
 
-        final retained =
-            <OrtValue>{
+        final retained = <OrtValue>{
           ...decoderKeyCache,
           ...decoderValueCache,
           ...encoderKeyCache,
           ...encoderValueCache,
         };
 
-        for (final entry
-            in outputs.entries) {
-          if (!retained.contains(
-            entry.value,
-          )) {
+        for (final entry in outputs.entries) {
+          if (!retained.contains(entry.value)) {
             await entry.value.dispose();
           }
         }
 
         await decoderInputTensor.dispose();
         await useCacheTensor.dispose();
-        await encoderAttentionMaskTensor
-            .dispose();
+        await encoderAttentionMaskTensor.dispose();
 
         // Next call only receives the newly
         // generated token.
-        decoderInputIds =
-            Int64List.fromList([
-          bestToken,
-        ]);
+        decoderInputIds = Int64List.fromList([bestToken]);
 
         useCacheBranch = true;
       }
@@ -1390,18 +1061,17 @@ class TranslationService extends ChangeNotifier {
 
       final generatedPieces =
           generatedTokens.map((id) {
-        final piece =
-            reverseVocab[id];
+            final piece = reverseVocab[id];
 
-        if (piece == null) {
-          throw StateError(
-            'Generated Marian ID $id was not found '
-            'in ${config.modelDirectory}/vocab.json.',
-          );
-        }
+            if (piece == null) {
+              throw StateError(
+                'Generated Marian ID $id was not found '
+                'in ${config.modelDirectory}/vocab.json.',
+              );
+            }
 
-        return piece;
-      }).toList();
+            return piece;
+          }).toList();
 
       // -----------------------------------------------------------------------
       // SentencePiece pieces -> raw SentencePiece IDs
@@ -1409,54 +1079,44 @@ class TranslationService extends ChangeNotifier {
 
       final rawSentencePieceIds =
           generatedPieces.map((piece) {
-        final rawId =
-            targetTokenizer.vocab
-                .pieceToId(piece);
+            final rawId = targetTokenizer.vocab.pieceToId(piece);
 
-        if (rawId < 0) {
-          throw StateError(
-            'SentencePiece piece "$piece" has no '
-            'raw SentencePiece ID.',
-          );
-        }
+            if (rawId < 0) {
+              throw StateError(
+                'SentencePiece piece "$piece" has no '
+                'raw SentencePiece ID.',
+              );
+            }
 
-        return rawId;
-      }).toList();
+            return rawId;
+          }).toList();
 
       // -----------------------------------------------------------------------
       // SentencePiece IDs -> target text
       // -----------------------------------------------------------------------
 
-      return targetTokenizer.decode(
-        rawSentencePieceIds,
-      );
+      return targetTokenizer.decode(rawSentencePieceIds);
     } finally {
-      for (final tensor
-          in decoderKeyCache) {
+      for (final tensor in decoderKeyCache) {
         await tensor.dispose();
       }
 
-      for (final tensor
-          in decoderValueCache) {
+      for (final tensor in decoderValueCache) {
         await tensor.dispose();
       }
 
-      for (final tensor
-          in encoderKeyCache) {
+      for (final tensor in encoderKeyCache) {
         await tensor.dispose();
       }
 
-      for (final tensor
-          in encoderValueCache) {
+      for (final tensor in encoderValueCache) {
         await tensor.dispose();
       }
 
       await encoderHiddenStates.dispose();
 
-      for (final tensor
-          in encoderOutputs.values) {
-        if (tensor !=
-            encoderHiddenStates) {
+      for (final tensor in encoderOutputs.values) {
+        if (tensor != encoderHiddenStates) {
           await tensor.dispose();
         }
       }
@@ -1482,21 +1142,17 @@ class TranslationService extends ChangeNotifier {
 
     _initialized = false;
 
-    _finnishToEnglishInitialization =
-        null;
+    _finnishToEnglishInitialization = null;
 
-    _englishToFinnishInitialization =
-        null;
+    _englishToFinnishInitialization = null;
 
     super.dispose();
   }
 
   Future<void> _disposeLoadedModels() async {
-    await _englishToFinnishModel
-        ?.dispose();
+    await _englishToFinnishModel?.dispose();
 
-    await _finnishToEnglishModel
-        ?.dispose();
+    await _finnishToEnglishModel?.dispose();
 
     _englishToFinnishModel = null;
     _finnishToEnglishModel = null;
@@ -1510,8 +1166,7 @@ class TranslationService extends ChangeNotifier {
     Map<String, OrtValue> outputs, {
     Set<OrtValue> except = const {},
   }) async {
-    for (final tensor
-        in outputs.values) {
+    for (final tensor in outputs.values) {
       if (!except.contains(tensor)) {
         await tensor.dispose();
       }

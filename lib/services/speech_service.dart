@@ -7,52 +7,41 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/tts_voice_model.dart';
 
 class SpeechService {
-  final stt.SpeechToText _speechToText =
-      stt.SpeechToText();
+  final stt.SpeechToText _speechToText = stt.SpeechToText();
 
-  final FlutterTts _tts =
-      FlutterTts();
+  final FlutterTts _tts = FlutterTts();
 
   bool _initialized = false;
   String _recognizedText = '';
 
-  Completer<String>?
-      _recognitionCompleter;
+  Completer<String>? _recognitionCompleter;
 
   // ---------------------------------------------------------------------------
   // Speech recognition
   // ---------------------------------------------------------------------------
 
-  bool get isInitialized =>
-      _initialized;
+  bool get isInitialized => _initialized;
 
-  bool get isListening =>
-      _speechToText.isListening;
+  bool get isListening => _speechToText.isListening;
 
-  String get recognizedText =>
-      _recognizedText;
+  String get recognizedText => _recognizedText;
 
   Future<bool> initialize() async {
     if (_initialized) {
       return true;
     }
 
-    _initialized =
-        await _speechToText.initialize(
+    _initialized = await _speechToText.initialize(
       onError: (error) {
         print(
           'Speech recognition error: '
           '${error.errorMsg}',
         );
 
-        final completer =
-            _recognitionCompleter;
+        final completer = _recognitionCompleter;
 
-        if (completer != null &&
-            !completer.isCompleted) {
-          completer.complete(
-            _recognizedText.trim(),
-          );
+        if (completer != null && !completer.isCompleted) {
+          completer.complete(_recognizedText.trim());
         }
       },
       onStatus: (status) {
@@ -71,13 +60,10 @@ class SpeechService {
   /// Examples:
   ///
   ///     startListening(localeId: 'fi-FI')
-  ///     startListening(localeId: 'en-US')
+  ///     startListening(localeId: 'en-GB')
   ///
-  Future<bool> startListening({
-    String? localeId,
-  }) async {
-    final initialized =
-        await initialize();
+  Future<bool> startListening({String? localeId}) async {
+    final initialized = await initialize();
 
     if (!initialized) {
       return false;
@@ -89,20 +75,12 @@ class SpeechService {
 
     _recognizedText = '';
 
-    _recognitionCompleter =
-        Completer<String>();
+    _recognitionCompleter = Completer<String>();
 
-    final options =
-        stt.SpeechListenOptions(
+    final options = stt.SpeechListenOptions(
       partialResults: true,
-      pauseFor:
-          const Duration(
-        seconds: 3,
-      ),
-      listenFor:
-          const Duration(
-        seconds: 60,
-      ),
+      pauseFor: const Duration(seconds: 3),
+      listenFor: const Duration(seconds: 60),
       localeId: localeId,
       onDevice: false,
       cancelOnError: false,
@@ -110,10 +88,8 @@ class SpeechService {
     );
 
     await _speechToText.listen(
-      onResult:
-          _onSpeechResult,
-      listenOptions:
-          options,
+      onResult: _onSpeechResult,
+      listenOptions: options,
     );
 
     return true;
@@ -121,38 +97,28 @@ class SpeechService {
 
   Future<String> stopListening() async {
     if (!_speechToText.isListening) {
-      final text =
-          _recognizedText.trim();
+      final text = _recognizedText.trim();
 
-      _recognitionCompleter =
-          null;
+      _recognitionCompleter = null;
 
       return text;
     }
 
-    final completer =
-        _recognitionCompleter;
+    final completer = _recognitionCompleter;
 
     await _speechToText.stop();
 
-    if (completer != null &&
-        !completer.isCompleted) {
+    if (completer != null && !completer.isCompleted) {
       try {
-        await completer.future.timeout(
-          const Duration(
-            milliseconds: 750,
-          ),
-        );
+        await completer.future.timeout(const Duration(milliseconds: 750));
       } on TimeoutException {
         // Use the latest recognized text.
       }
     }
 
-    final transcription =
-        _recognizedText.trim();
+    final transcription = _recognizedText.trim();
 
-    _recognitionCompleter =
-        null;
+    _recognitionCompleter = null;
 
     return transcription;
   }
@@ -162,44 +128,31 @@ class SpeechService {
 
     _recognizedText = '';
 
-    final completer =
-        _recognitionCompleter;
+    final completer = _recognitionCompleter;
 
-    if (completer != null &&
-        !completer.isCompleted) {
+    if (completer != null && !completer.isCompleted) {
       completer.complete('');
     }
 
-    _recognitionCompleter =
-        null;
+    _recognitionCompleter = null;
   }
 
-  void _onSpeechResult(
-    stt.SpeechRecognitionResult result,
-  ) {
-    final text =
-        result.recognizedWords.trim();
+  void _onSpeechResult(stt.SpeechRecognitionResult result) {
+    final text = result.recognizedWords.trim();
 
     if (text.isNotEmpty) {
       _recognizedText = text;
     }
 
-    final completer =
-        _recognitionCompleter;
+    final completer = _recognitionCompleter;
 
-    if (result.finalResult &&
-        completer != null &&
-        !completer.isCompleted) {
-      completer.complete(
-        _recognizedText.trim(),
-      );
+    if (result.finalResult && completer != null && !completer.isCompleted) {
+      completer.complete(_recognizedText.trim());
     }
   }
 
-  Future<List<stt.LocaleName>>
-      getLocales() async {
-    final initialized =
-        await initialize();
+  Future<List<stt.LocaleName>> getLocales() async {
+    final initialized = await initialize();
 
     if (!initialized) {
       return [];
@@ -209,15 +162,13 @@ class SpeechService {
   }
 
   Future<String?> getSystemLocale() async {
-    final initialized =
-        await initialize();
+    final initialized = await initialize();
 
     if (!initialized) {
       return null;
     }
 
-    final locale =
-        await _speechToText.systemLocale();
+    final locale = await _speechToText.systemLocale();
 
     return locale?.localeId;
   }
@@ -226,36 +177,20 @@ class SpeechService {
   // TTS
   // ---------------------------------------------------------------------------
 
-  Future<void> setTtsLanguage(
-    String language,
-  ) async {
-    await _tts.setLanguage(
-      language,
-    );
+  Future<void> setTtsLanguage(String language) async {
+    await _tts.setLanguage(language);
   }
 
-  Future<void> setSpeechRate(
-    double rate,
-  ) async {
-    await _tts.setSpeechRate(
-      rate,
-    );
+  Future<void> setSpeechRate(double rate) async {
+    await _tts.setSpeechRate(rate);
   }
 
-  Future<void> setVolume(
-    double volume,
-  ) async {
-    await _tts.setVolume(
-      volume,
-    );
+  Future<void> setVolume(double volume) async {
+    await _tts.setVolume(volume);
   }
 
-  Future<void> setPitch(
-    double pitch,
-  ) async {
-    await _tts.setPitch(
-      pitch,
-    );
+  Future<void> setPitch(double pitch) async {
+    await _tts.setPitch(pitch);
   }
 
   // ---------------------------------------------------------------------------
@@ -265,66 +200,40 @@ class SpeechService {
   /// Returns only English and Finnish TTS voices.
   ///
   /// This intentionally excludes every other installed language.
-  Future<List<TtsVoice>>
-      getTtsVoices() async {
-    final voices =
-        await _tts.getVoices;
+  Future<List<TtsVoice>> getTtsVoices() async {
+    final voices = await _tts.getVoices;
 
     if (voices is! List) {
       return [];
     }
 
-    final result = voices
-        .whereType<Map>()
-        .map(
-          TtsVoice.fromPlatformMap,
-        )
-        .where(
-          (voice) =>
-              voice.name.isNotEmpty &&
-              voice.locale.isNotEmpty,
-        )
-        .where(
-          _isEnglishOrFinnish,
-        )
-        .toList();
+    final result =
+        voices
+            .whereType<Map>()
+            .map(TtsVoice.fromPlatformMap)
+            .where((voice) => voice.name.isNotEmpty && voice.locale.isNotEmpty)
+            .where(_isEnglishOrFinnish)
+            .toList();
 
-    result.sort(
-      (a, b) {
-        final localeCompare =
-            a.locale
-                .toLowerCase()
-                .compareTo(
-                  b.locale
-                      .toLowerCase(),
-                );
+    result.sort((a, b) {
+      final localeCompare = a.locale.toLowerCase().compareTo(
+        b.locale.toLowerCase(),
+      );
 
-        if (localeCompare != 0) {
-          return localeCompare;
-        }
+      if (localeCompare != 0) {
+        return localeCompare;
+      }
 
-        return a.name
-            .toLowerCase()
-            .compareTo(
-              b.name
-                  .toLowerCase(),
-            );
-      },
-    );
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
 
     return result;
   }
 
-  bool _isEnglishOrFinnish(
-    TtsVoice voice,
-  ) {
-    final language =
-        languageCodeForLocale(
-      voice.locale,
-    );
+  bool _isEnglishOrFinnish(TtsVoice voice) {
+    final language = languageCodeForLocale(voice.locale);
 
-    return language == 'en' ||
-        language == 'fi';
+    return language == 'en' || language == 'fi';
   }
 
   /// Returns the language portion of a locale.
@@ -335,28 +244,20 @@ class SpeechService {
   ///     fi_FI -> fi
   ///     en-US -> en
   ///     en_GB -> en
-  String languageCodeForLocale(
-    String locale,
-  ) {
-    final normalized =
-        locale.trim().toLowerCase();
+  String languageCodeForLocale(String locale) {
+    final normalized = locale.trim().toLowerCase();
 
     if (normalized.isEmpty) {
       return '';
     }
 
-    final hyphen =
-        normalized.indexOf('-');
+    final hyphen = normalized.indexOf('-');
 
-    final underscore =
-        normalized.indexOf('_');
+    final underscore = normalized.indexOf('_');
 
-    var separator =
-        hyphen;
+    var separator = hyphen;
 
-    if (separator == -1 ||
-        (underscore != -1 &&
-            underscore < separator)) {
+    if (separator == -1 || (underscore != -1 && underscore < separator)) {
       separator = underscore;
     }
 
@@ -364,10 +265,7 @@ class SpeechService {
       return normalized;
     }
 
-    return normalized.substring(
-      0,
-      separator,
-    );
+    return normalized.substring(0, separator);
   }
 
   /// Returns only voices belonging to [languageCode].
@@ -376,29 +274,17 @@ class SpeechService {
   ///
   ///     fi
   ///     en
-  Future<List<TtsVoice>>
-      getTtsVoicesForLanguage(
-    String languageCode,
-  ) async {
-    final normalized =
-        languageCode.trim().toLowerCase();
+  Future<List<TtsVoice>> getTtsVoicesForLanguage(String languageCode) async {
+    final normalized = languageCode.trim().toLowerCase();
 
-    if (normalized != 'fi' &&
-        normalized != 'en') {
+    if (normalized != 'fi' && normalized != 'en') {
       return [];
     }
 
-    final voices =
-        await getTtsVoices();
+    final voices = await getTtsVoices();
 
     return voices
-        .where(
-          (voice) =>
-              languageCodeForLocale(
-                voice.locale,
-              ) ==
-              normalized,
-        )
+        .where((voice) => languageCodeForLocale(voice.locale) == normalized)
         .toList();
   }
 
@@ -408,27 +294,19 @@ class SpeechService {
   ///   fi-FI is preferred.
   ///
   /// English:
-  ///   en-US is preferred, then en-GB.
-  Future<TtsVoice?> getDefaultTtsVoice(
-    String languageCode,
-  ) async {
-    final voices =
-        await getTtsVoicesForLanguage(
-      languageCode,
-    );
+  ///   en-GB is preferred, then en-US.
+  Future<TtsVoice?> getDefaultTtsVoice(String languageCode) async {
+    final voices = await getTtsVoicesForLanguage(languageCode);
 
     if (voices.isEmpty) {
       return null;
     }
 
-    final normalized =
-        languageCode.trim().toLowerCase();
+    final normalized = languageCode.trim().toLowerCase();
 
     if (normalized == 'fi') {
       for (final voice in voices) {
-        if (voice.locale
-                .toLowerCase() ==
-            'fi-fi') {
+        if (voice.locale.toLowerCase() == 'fi-fi') {
           return voice;
         }
       }
@@ -436,17 +314,13 @@ class SpeechService {
 
     if (normalized == 'en') {
       for (final voice in voices) {
-        if (voice.locale
-                .toLowerCase() ==
-            'en-us') {
+        if (voice.locale.toLowerCase() == 'en-gb') {
           return voice;
         }
       }
 
       for (final voice in voices) {
-        if (voice.locale
-                .toLowerCase() ==
-            'en-gb') {
+        if (voice.locale.toLowerCase() == 'en-us') {
           return voice;
         }
       }
@@ -456,39 +330,26 @@ class SpeechService {
   }
 
   /// Sets a specific TTS voice.
-  Future<void> setTtsVoice(
-    TtsVoice voice,
-  ) async {
-    final platformVoice =
-        <String, String>{
+  Future<void> setTtsVoice(TtsVoice voice) async {
+    final platformVoice = <String, String>{
       'name': voice.name,
       'locale': voice.locale,
     };
 
-    if (voice.identifier != null &&
-        voice.identifier!.isNotEmpty) {
-      platformVoice['identifier'] =
-          voice.identifier!;
+    if (voice.identifier != null && voice.identifier!.isNotEmpty) {
+      platformVoice['identifier'] = voice.identifier!;
     }
 
-    await _tts.setVoice(
-      platformVoice,
-    );
+    await _tts.setVoice(platformVoice);
   }
 
   /// Speaks using [voice].
-  Future<void> speak(
-    String text, {
-    TtsVoice? voice,
-  }) async {
+  Future<void> speak(String text, {TtsVoice? voice}) async {
     if (voice != null) {
-      await setTtsVoice(
-        voice,
-      );
+      await setTtsVoice(voice);
     }
 
-    await _tts
-        .awaitSpeakCompletion(true);
+    await _tts.awaitSpeakCompletion(true);
 
     await _tts.speak(text);
   }
@@ -505,10 +366,7 @@ class SpeechService {
     String text, {
     required String languageCode,
   }) async {
-    final voice =
-        await getDefaultTtsVoice(
-      languageCode,
-    );
+    final voice = await getDefaultTtsVoice(languageCode);
 
     if (voice == null) {
       throw StateError(
@@ -517,10 +375,7 @@ class SpeechService {
       );
     }
 
-    await speak(
-      text,
-      voice: voice,
-    );
+    await speak(text, voice: voice);
   }
 
   Future<void> stopSpeaking() async {
@@ -537,26 +392,15 @@ class SpeechService {
     TtsVoice? voice,
   }) async {
     if (voice != null) {
-      await setTtsVoice(
-        voice,
-      );
+      await setTtsVoice(voice);
     }
 
-    await _tts
-        .awaitSynthCompletion(true);
+    await _tts.awaitSynthCompletion(true);
 
-    final result =
-        await _tts.synthesizeToFile(
-      text,
-      path,
-      true,
-    );
+    final result = await _tts.synthesizeToFile(text, path, true);
 
-    if (result != 1 &&
-        result != true) {
-      throw StateError(
-        'Text-to-speech failed to create audio file.',
-      );
+    if (result != 1 && result != true) {
+      throw StateError('Text-to-speech failed to create audio file.');
     }
   }
 
@@ -567,7 +411,6 @@ class SpeechService {
   Future<void> dispose() async {
     await _speechToText.cancel();
     await _tts.stop();
-    _recognitionCompleter =
-        null;
+    _recognitionCompleter = null;
   }
 }
