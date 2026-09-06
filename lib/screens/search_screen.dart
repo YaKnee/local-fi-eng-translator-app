@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/translated_model.dart';
+import '../models/tts_voice_model.dart';
 import '../services/speech_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/playback_mini_player.dart';
@@ -23,8 +24,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
   /// Currently displayed/search-filtered list.
   ///
-  /// Playback also operates on this list, so when a search is
-  /// active, playback only moves through the search results.
+  /// Playback also operates on this list, so when a search is active,
+  /// playback only moves through the search results.
   List<Translated> _filteredItems = [];
 
   final Set<int> _selectedIds = {};
@@ -32,7 +33,10 @@ class _SearchScreenState extends State<SearchScreen> {
   /// ID of the recording currently being played.
   int? _playingId;
 
-  /// Incremented every time playback is replaced/stopped.
+  /// Changes whenever playback is replaced or stopped.
+  ///
+  /// This prevents an old async playback operation from continuing after
+  /// the user has selected another recording or stopped playback.
   int _playbackGeneration = 0;
 
   List<String> _categories = [];
@@ -83,8 +87,7 @@ class _SearchScreenState extends State<SearchScreen> {
   // ---------------------------------------------------------------------------
 
   Future<void> _applySearchResults(List<Translated> results) async {
-    // Searching changes the playback queue, so stop the current
-    // playback before replacing the displayed list.
+    // Searching changes the playback queue, so stop current playback first.
     if (_playingId != null) {
       await _stopPlayback();
     }
@@ -94,8 +97,89 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     setState(() {
-      _filteredItems = results;
+      _filteredItems = List<Translated>.from(results);
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // TTS voice selection
+  // ---------------------------------------------------------------------------
+
+  /// Normalizes a stored language/locale into the application's supported
+  /// language codes.
+  ///
+  /// Supported values include:
+  ///
+  ///   fi
+  ///   fi-FI
+  ///   en
+  ///   en-US
+  ///   en-GB
+  String? _languageCode(String language) {
+    final normalized = language.trim().toLowerCase().replaceAll('_', '-');
+
+    if (normalized == 'fi' || normalized.startsWith('fi-')) {
+      return 'fi';
+    }
+
+    if (normalized == 'en' || normalized.startsWith('en-')) {
+      return 'en';
+    }
+
+    // Also handle full language names in case older stored recordings use
+    // "Finnish" / "English".
+    if (normalized == 'finnish') {
+      return 'fi';
+    }
+
+    if (normalized == 'english') {
+      return 'en';
+    }
+
+    return null;
+  }
+
+  /// Returns the configured voice for [language].
+  ///
+  /// Importantly, this resolves the voice by LANGUAGE rather than by whether
+  /// the text happens to be original or translated.
+  ///
+  /// For example:
+  ///
+  ///   English source + Finnish target
+  ///       original    -> English voice
+  ///       translation -> Finnish voice
+  ///
+  ///   Finnish source + English target
+  ///       original    -> Finnish voice
+  ///       translation -> English voice
+  Future<TtsVoice?> _getVoiceForLanguage(
+    String language, {
+    required StorageService storage,
+    required SpeechService speechService,
+  }) async {
+    final languageCode = _languageCode(language);
+
+    if (languageCode == null) {
+      return null;
+    }
+
+    // First use the user's explicitly configured language-specific voice.
+    TtsVoice? voice;
+
+    if (languageCode == 'fi') {
+      voice = storage.getFinnishVoice();
+    } else if (languageCode == 'en') {
+      voice = storage.getEnglishVoice();
+    }
+
+    if (voice != null) {
+      return voice;
+    }
+
+    // If the user has not configured a voice for this language, select a
+    // suitable installed system voice.
+    return speechService.getDefaultTtsVoice(languageCode);
   }
 
   // ---------------------------------------------------------------------------
@@ -119,15 +203,24 @@ class _SearchScreenState extends State<SearchScreen> {
     final storage = context.read<StorageService>();
     final speechService = context.read<SpeechService>();
 
-    final originalVoice = storage.getOriginalTtsVoice();
-    final translatedVoice = storage.getTranslatedTtsVoice();
+    final originalVoice = await _getVoiceForLanguage(
+      item.sourceLanguage,
+      storage: storage,
+      speechService: speechService,
+    );
 
-    // Every playback operation gets a unique generation.
-    final generation = ++_playbackGeneration;
+    final translatedVoice = await _getVoiceForLanguage(
+      item.targetLanguage,
+      storage: storage,
+      speechService: speechService,
+    );
 
     if (!mounted) {
       return;
     }
+
+    // Every playback operation gets a unique generation.
+    final generation = ++_playbackGeneration;
 
     setState(() {
       _playingId = item.id;
@@ -135,7 +228,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       // ---------------------------------------------------------------------
-      // Original language
+      // Original / source language
       // ---------------------------------------------------------------------
 
       if (originalText.isNotEmpty) {
@@ -157,7 +250,7 @@ class _SearchScreenState extends State<SearchScreen> {
       }
 
       // ---------------------------------------------------------------------
-      // Translated language
+      // Translated / target language
       // ---------------------------------------------------------------------
 
       if (translatedText.isNotEmpty) {
@@ -169,18 +262,24 @@ class _SearchScreenState extends State<SearchScreen> {
       }
 
       // ---------------------------------------------------------------------
-      // Current item finished -> automatically play next item.
+      // Automatically continue with the next recording.
       // ---------------------------------------------------------------------
 
       final nextIndex = index + 1;
 
       if (nextIndex < _filteredItems.length) {
         await Future.delayed(const Duration(milliseconds: 700));
+
+        if (!_isCurrentPlayback(generation)) {
+          return;
+        }
+
+        // Start the next item as a new playback generation.
         await _playFromIndex(nextIndex);
       }
     } catch (error) {
-      // If this playback has already been replaced/stopped,
-      // don't show an error from the old playback operation.
+      // Ignore errors from playback operations that have already been
+      // replaced or stopped.
       if (!_isCurrentPlayback(generation)) {
         return;
       }
@@ -200,8 +299,7 @@ class _SearchScreenState extends State<SearchScreen> {
         return;
       }
 
-      // Only clear the player if this is still the active
-      // playback generation.
+      // Only the currently active generation may clear the player.
       if (_playbackGeneration == generation) {
         setState(() {
           _playingId = null;
@@ -217,8 +315,8 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _stopPlayback() async {
     // Invalidate the current playback immediately.
     //
-    // This prevents the existing async playback operation from
-    // continuing to the next item while stopSpeaking() completes.
+    // This prevents an existing async playback operation from continuing
+    // to the next language or recording while stopSpeaking() completes.
     _playbackGeneration++;
 
     final speechService = context.read<SpeechService>();
@@ -247,8 +345,7 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
 
-    // Stop anything currently playing before starting
-    // the newly selected item.
+    // Stop anything currently playing before starting a new item.
     if (_playingId != null) {
       await _stopPlayback();
     }
@@ -310,7 +407,6 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  /// Clears all selected items.
   void _clearSelection() {
     if (_selectedIds.isEmpty) {
       return;
@@ -321,8 +417,6 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  /// Selects all currently visible items, or deselects all currently
-  /// visible items if they are already all selected.
   void _toggleSelectAll() {
     if (_filteredItems.isEmpty) {
       return;
@@ -334,12 +428,10 @@ class _SearchScreenState extends State<SearchScreen> {
 
     setState(() {
       if (allSelected) {
-        // Deselect all currently visible items.
         for (final item in _filteredItems) {
           _selectedIds.remove(item.id);
         }
       } else {
-        // Select all currently visible items.
         for (final item in _filteredItems) {
           _selectedIds.add(item.id);
         }
@@ -403,34 +495,51 @@ class _SearchScreenState extends State<SearchScreen> {
       _deleting = true;
     });
 
-    for (final id in ids) {
-      await storage.deleteTranslated(id);
-    }
+    try {
+      for (final id in ids) {
+        await storage.deleteTranslated(id);
+      }
 
-    if (!mounted) {
-      return;
-    }
+      if (!mounted) {
+        return;
+      }
 
-    setState(() {
-      _items.removeWhere((item) => ids.contains(item.id));
+      setState(() {
+        _items.removeWhere((item) => ids.contains(item.id));
+        _filteredItems.removeWhere((item) => ids.contains(item.id));
+        _selectedIds.clear();
+        _deleting = false;
+      });
 
-      _filteredItems.removeWhere((item) => ids.contains(item.id));
-
-      _selectedIds.clear();
-      _deleting = false;
-    });
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            'Deleted ${ids.length} recording'
-            '${ids.length == 1 ? '' : 's'}.',
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Deleted ${ids.length} recording'
+              '${ids.length == 1 ? '' : 's'}.',
+            ),
+            backgroundColor: Colors.green,
           ),
-          backgroundColor: Colors.green,
-        ),
-      );
+        );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _deleting = false;
+      });
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Could not delete recordings: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -476,9 +585,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ? const Center(child: CircularProgressIndicator())
               : Column(
                 children: [
-                  // -----------------------------------------------------------
-                  // Search and filters
-                  // -----------------------------------------------------------
+                  // Search and filters.
                   SearchAndFilterBar(
                     controller: _searchController,
                     items: _items,
@@ -486,9 +593,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     onResults: _applySearchResults,
                   ),
 
-                  // -----------------------------------------------------------
-                  // Selection actions
-                  // -----------------------------------------------------------
+                  // Selection actions.
                   if (hasSelection)
                     Material(
                       color: Theme.of(context).colorScheme.surfaceContainer,
@@ -500,9 +605,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               '${_selectedIds.length} selected',
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
-
                             const Spacer(),
-
                             TextButton.icon(
                               onPressed: _deleting ? null : _toggleSelectAll,
                               icon: Icon(
@@ -510,15 +613,13 @@ class _SearchScreenState extends State<SearchScreen> {
                                     ? Icons.fullscreen_exit
                                     : Icons.fullscreen,
                               ),
-                              label: Text('All'),
+                              label: const Text('All'),
                             ),
-
                             TextButton.icon(
                               onPressed: _deleting ? null : _clearSelection,
                               icon: const Icon(Icons.clear_rounded),
                               label: const Text('Clear'),
                             ),
-
                             TextButton.icon(
                               onPressed: _deleting ? null : _deleteSelected,
                               icon: const Icon(Icons.delete_outline),
@@ -529,9 +630,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                     ),
 
-                  // -----------------------------------------------------------
-                  // Results
-                  // -----------------------------------------------------------
+                  // Results.
                   Expanded(
                     child:
                         _filteredItems.isEmpty
